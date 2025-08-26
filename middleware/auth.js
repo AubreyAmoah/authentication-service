@@ -32,6 +32,12 @@ const authenticate = async (req, res, next) => {
             return sendError(res, 'Invalid or expired session', 401);
         }
 
+        // Update session activity (replaces req.session.touch())
+        await prisma.session.update({
+            where: { id: session.id },
+            data: { updatedAt: new Date() }
+        });
+
         // Get user details
         const user = await userService.findUserById(decoded.userId);
 
@@ -43,9 +49,9 @@ const authenticate = async (req, res, next) => {
             return sendError(res, 'Organization is inactive', 401);
         }
 
-        // Add user and session to request
+        // Add user and session to request (renamed to avoid Express session confusion)
         req.user = user;
-        req.session = session;
+        req.userSession = session; // Changed from req.session to req.userSession
         req.token = token;
 
         next();
@@ -79,10 +85,16 @@ const optionalAuth = async (req, res, next) => {
         });
 
         if (session) {
+            // Update session activity (don't fail if this fails)
+            await prisma.session.update({
+                where: { id: session.id },
+                data: { updatedAt: new Date() }
+            }).catch(console.error);
+
             const user = await userService.findUserById(decoded.userId);
             if (user && user.isActive && user.organization?.isActive) {
                 req.user = user;
-                req.session = session;
+                req.userSession = session; // Changed from req.session to req.userSession
                 req.token = token;
             }
         }

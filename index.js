@@ -7,17 +7,8 @@ const cookieParser = require('cookie-parser');
 const session = require('express-session');
 const passport = require('passport');
 const rateLimit = require('express-rate-limit');
-const { RedisStore } = require('connect-redis');
-const { createClient } = require('redis');
 
-// Create Redis client
-const redisClient = createClient({
-    host: 'localhost',
-    port: 6379,
-    // Add other Redis config as needed
-});
 
-redisClient.connect().catch(console.error);
 
 // Import configuration and utilities
 const config = require('./config');
@@ -81,7 +72,6 @@ if (config.server.nodeEnv === 'development') {
 
 // Session configuration for OAuth
 app.use(session({
-    store: new RedisStore({ client: redisClient }),
     secret: config.session.secret,
     resave: false,
     saveUninitialized: false,
