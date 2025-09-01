@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authentication Service API Documentation</title>
+    <link rel="stylesheet" href="/css/docs.css">
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Authentication Service API</h1>
+            <p>Complete multi-tenant authentication and authorization system</p>
+            <div class="version-badge">Version 1.0.0</div>
+        </div>
+
+        <div class="stats">
+            <h2>API Overview</h2>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <span class="stat-number" id="total-endpoints">42</span>
+                    <div class="stat-label">Total Endpoints</div>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">7</span>
+                    <div class="stat-label">Service Areas</div>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">JWT</span>
+                    <div class="stat-label">Auth Type</div>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">REST</span>
+                    <div class="stat-label">API Style</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="endpoints-grid">
+            <div class="endpoint-section">
+                <h2>🔐 Authentication</h2>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">Register</span>
+                    <span class="endpoint-method method-post">POST /api/auth/register</span>
+                </div>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">Login</span>
+                    <span class="endpoint-method method-post">POST /api/auth/login</span>
+                </div>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">Logout</span>
+                    <span class="endpoint-method method-post">POST /api/auth/logout</span>
+                </div>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">Refresh Token</span>
+                    <span class="endpoint-method method-post">POST /api/auth/refresh-token</span>
+                </div>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">Profile</span>
+                    <span class="endpoint-method method-get">GET /api/auth/profile</span>
+                </div>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">Change Password</span>
+                    <span class="endpoint-method method-patch">PATCH /api/auth/change-password</span>
+                </div>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">Forgot Password</span>
+                    <span class="endpoint-method method-post">POST /api/auth/forgot-password</span>
+                </div>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">Reset Password</span>
+                    <span class="endpoint-method method-post">POST /api/auth/reset-password</span>
+                </div>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">Verify Email</span>
+                    <span class="endpoint-method method-get">GET /api/auth/verify-email</span>
+                </div>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">Send Invitation</span>
+                    <span class="endpoint-method method-post">POST /api/auth/invite</span>
+                </div>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">Accept Invitation</span>
+                    <span class="endpoint-method method-post">POST /api/auth/accept-invitation</span>
+                </div>
+            </div>
+
+            <div class="endpoint-section">
+                <h2>👥 Users</h2>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">Get Users</span>
+                    <span class="endpoint-method method-get">GET /api/users</span>
+                </div>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">Get User by ID</span>
+                    <span class="endpoint-method method-get">GET /api/users/:id</span>
+                </div>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">Update User</span>
+                    <span class="endpoint-method method-patch">PATCH /api/users/:id</span>
+                </div>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">Delete User</span>
+                    <span class="endpoint-method method-delete">DELETE /api/users/:id</span>
+                </div>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">Get User Roles</span>
+                    <span class="endpoint-method method-get">GET /api/users/:id/roles</span>
+                </div>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">Assign Role</span>
+                    <span class="endpoint-method method-post">POST /api/users/:id/roles</span>
+                </div>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">Remove Role</span>
+                    <span class="endpoint-method method-delete">DELETE /api/users/:id/roles/:roleId</span>
+                </div>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">Search Users</span>
+                    <span class="endpoint-method method-get">GET /api/users/search</span>
+                </div>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">User Statistics</span>
+                    <span class="endpoint-method method-get">GET /api/users/stats</span>
+                </div>
+            </div>
+
+            <div class="endpoint-section">
+                <h2>🏢 Organizations</h2>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">Get Current</span>
+                    <span class="endpoint-method method-get">GET /api/organizations/current</span>
+                </div>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">Update Current</span>
+                    <span class="endpoint-method method-patch">PATCH /api/organizations/current</span>
+                </div>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">Get Settings</span>
+                    <span class="endpoint-method method-get">GET /api/organizations/current/settings</span>
+                </div>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">Update Settings</span>
+                    <span class="endpoint-method method-patch">PATCH /api/organizations/current/settings</span>
+                </div>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">Get Statistics</span>
+                    <span class="endpoint-method method-get">GET /api/organizations/current/stats</span>
+                </div>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">Check Availability</span>
+                    <span class="endpoint-method method-get">GET /api/organizations/check-availability</span>
+                </div>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">Get by Slug (Public)</span>
+                    <span class="endpoint-method method-get">GET /api/organizations/:slug/public</span>
+                </div>
+            </div>
+
+            <div class="endpoint-section">
+                <h2>🔑 Roles & Permissions</h2>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">Get Roles</span>
+                    <span class="endpoint-method method-get">GET /api/roles</span>
+                </div>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">Create Role</span>
+                    <span class="endpoint-method method-post">POST /api/roles</span>
+                </div>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">Get Role by ID</span>
+                    <span class="endpoint-method method-get">GET /api/roles/:id</span>
+                </div>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">Update Role</span>
+                    <span class="endpoint-method method-patch">PATCH /api/roles/:id</span>
+                </div>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">Delete Role</span>
+                    <span class="endpoint-method method-delete">DELETE /api/roles/:id</span>
+                </div>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">Get Permissions</span>
+                    <span class="endpoint-method method-get">GET /api/roles/permissions</span>
+                </div>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">Role Statistics</span>
+                    <span class="endpoint-method method-get">GET /api/roles/stats</span>
+                </div>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">Duplicate Role</span>
+                    <span class="endpoint-method method-post">POST /api/roles/:id/duplicate</span>
+                </div>
+            </div>
+
+            <div class="endpoint-section">
+                <h2>🌐 OAuth</h2>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">Google Login</span>
+                    <span class="endpoint-method method-get">GET /api/oauth/google</span>
+                </div>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">GitHub Login</span>
+                    <span class="endpoint-method method-get">GET /api/oauth/github</span>
+                </div>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">Get Providers</span>
+                    <span class="endpoint-method method-get">GET /api/oauth/providers</span>
+                </div>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">Unlink Provider</span>
+                    <span class="endpoint-method method-delete">DELETE /api/oauth/providers/:provider</span>
+                </div>
+            </div>
+
+            <div class="endpoint-section">
+                <h2>🔒 Multi-Factor Auth</h2>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">Get MFA Status</span>
+                    <span class="endpoint-method method-get">GET /api/mfa/status</span>
+                </div>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">Setup Start</span>
+                    <span class="endpoint-method method-post">POST /api/mfa/setup/start</span>
+                </div>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">Setup Complete</span>
+                    <span class="endpoint-method method-post">POST /api/mfa/setup/complete</span>
+                </div>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">Verify Token</span>
+                    <span class="endpoint-method method-post">POST /api/mfa/verify</span>
+                </div>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">Disable MFA</span>
+                    <span class="endpoint-method method-post">POST /api/mfa/disable</span>
+                </div>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">Backup Codes Count</span>
+                    <span class="endpoint-method method-get">GET /api/mfa/backup-codes/count</span>
+                </div>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">Regenerate Backup Codes</span>
+                    <span class="endpoint-method method-post">POST /api/mfa/backup-codes/regenerate</span>
+                </div>
+            </div>
+
+            <div class="endpoint-section">
+                <h2>⚡ Super Admin</h2>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">System Statistics</span>
+                    <span class="endpoint-method method-get">GET /api/super-admin/stats</span>
+                </div>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">All Users</span>
+                    <span class="endpoint-method method-get">GET /api/super-admin/users</span>
+                </div>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">User Details</span>
+                    <span class="endpoint-method method-get">GET /api/super-admin/users/:id</span>
+                </div>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">Create Super Admin</span>
+                    <span class="endpoint-method method-post">POST /api/super-admin/users/super-admin</span>
+                </div>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">Toggle Super Admin</span>
+                    <span class="endpoint-method method-patch">PATCH
+                        /api/super-admin/users/:id/toggle-super-admin</span>
+                </div>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">Delete Any User</span>
+                    <span class="endpoint-method method-delete">DELETE /api/super-admin/users/:id</span>
+                </div>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">All Sessions</span>
+                    <span class="endpoint-method method-get">GET /api/super-admin/sessions</span>
+                </div>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">Revoke Any Session</span>
+                    <span class="endpoint-method method-delete">DELETE /api/super-admin/sessions/:sessionId</span>
+                </div>
+                <div class="endpoint-item">
+                    <span class="endpoint-name">All Organizations</span>
+                    <span class="endpoint-method method-get">GET /api/super-admin/organizations</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>🧪 API Testing</h2>
+            <p style="margin-bottom: 15px; color: #666;">Test the API endpoints directly from here:</p>
+            <button class="test-button" onclick="testEndpoint('/health')">Test Health Check</button>
+            <button class="test-button" onclick="testEndpoint('/api/organizations/check-availability?name=test')">Test
+                Check Availability</button>
+            <div id="response" class="response-display"></div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>&copy; 2024 Authentication Service API | Built with Node.js, Express & Prisma</p>
+    </div>
+
+    <script src="/js/docs.js"></script>
+</body>
+
+</html>
