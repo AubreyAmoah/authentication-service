@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authentication Service - Documentation</title>
+    <link rel="stylesheet" href="/css/documentation.css">
+</head>
+
+<body>
+    <nav class="sidebar">
+        <div class="logo">
+            <h2>🔐 Auth Service</h2>
+        </div>
+        <ul class="nav-menu">
+            <li><a href="#overview" class="nav-link active">Overview</a></li>
+            <li><a href="#getting-started" class="nav-link">Getting Started</a></li>
+            <li><a href="#authentication" class="nav-link">Authentication</a></li>
+            <li><a href="#users" class="nav-link">User Management</a></li>
+            <li><a href="#organizations" class="nav-link">Organizations</a></li>
+            <li><a href="#roles" class="nav-link">Roles & Permissions</a></li>
+            <li><a href="#oauth" class="nav-link">OAuth Integration</a></li>
+            <li><a href="#mfa" class="nav-link">Multi-Factor Auth</a></li>
+            <li><a href="#super-admin" class="nav-link">Super Admin</a></li>
+            <li><a href="#examples" class="nav-link">Code Examples</a></li>
+            <li><a href="#security" class="nav-link">Security</a></li>
+            <li><a href="#troubleshooting" class="nav-link">Troubleshooting</a></li>
+        </ul>
+    </nav>
+
+    <main class="content">
+        <section id="overview" class="section">
+            <h1>Authentication Service Documentation</h1>
+            <p class="lead">A comprehensive multi-tenant authentication and authorization system built with Node.js,
+                Express, and Prisma.</p>
+
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🏢</div>
+                    <h3>Multi-Tenant</h3>
+                    <p>Complete organization isolation with independent user bases, roles, and permissions</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔑</div>
+                    <h3>JWT Authentication</h3>
+                    <p>Secure token-based authentication with access and refresh token support</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🛡️</div>
+                    <h3>RBAC</h3>
+                    <p>Role-based access control with fine-grained permissions</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🌐</div>
+                    <h3>OAuth Ready</h3>
+                    <p>Google, GitHub, and extensible OAuth provider support</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="getting-started" class="section">
+            <h2>Getting Started</h2>
+
+            <h3>Installation</h3>
+            <pre><code># Clone the repository
+git clone &lt;your-repo-url&gt;
+cd authentication-service
+
+# Install dependencies
+npm install
+
+# Set up environment variables
+cp .env.example .env
+
+# Run database migrations
+npx prisma db push
+
+# Seed the database
+npx prisma db seed
+
+# Start the server
+npm start</code></pre>
+
+            <h3>Environment Variables</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Variable</th>
+                            <th>Description</th>
+                            <th>Required</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>DATABASE_URL</code></td>
+                            <td>PostgreSQL connection string</td>
+                            <td>Yes</td>
+                        </tr>
+                        <tr>
+                            <td><code>JWT_SECRET</code></td>
+                            <td>Secret for signing JWT tokens</td>
+                            <td>Yes</td>
+                        </tr>
+                        <tr>
+                            <td><code>SESSION_SECRET</code></td>
+                            <td>Secret for Express sessions</td>
+                            <td>Yes</td>
+                        </tr>
+                        <tr>
+                            <td><code>SMTP_HOST</code></td>
+                            <td>Email server host</td>
+                            <td>No</td>
+                        </tr>
+                        <tr>
+                            <td><code>GOOGLE_CLIENT_ID</code></td>
+                            <td>Google OAuth client ID</td>
+                            <td>No</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="authentication" class="section">
+            <h2>Authentication Flow</h2>
+
+            <h3>Registration</h3>
+            <p>Users can register with email/password and optionally create a new organization:</p>
+
+            <div class="code-example">
+                <div class="code-header">
+                    <span>POST /api/auth/register</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>{
+  "email": "user@example.com",
+  "password": "SecurePassword123!",
+  "firstName": "John",
+  "lastName": "Doe",
+  "organizationName": "My Company" // Optional
+}</code></pre>
+            </div>
+
+            <h3>Login</h3>
+            <p>Standard email/password login with optional MFA verification:</p>
+
+            <div class="code-example">
+                <div class="code-header">
+                    <span>POST /api/auth/login</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>{
+  "email": "user@example.com",
+  "password": "SecurePassword123!",
+  "organizationSlug": "my-company", // Optional
+  "mfaToken": "123456", // Required if MFA is enabled
+  "isBackupCode": false
+}</code></pre>
+            </div>
+
+            <h3>Token Management</h3>
+            <p>The service uses JWT tokens with the following structure:</p>
+            <ul>
+                <li><strong>Access Token</strong>: Short-lived (1 hour), used for API requests</li>
+                <li><strong>Refresh Token</strong>: Long-lived (30 days), used to obtain new access tokens</li>
+            </ul>
+
+            <div class="info-box">
+                <h4>Token Security</h4>
+                <p>Always store tokens securely and use HTTPS in production. Implement proper token rotation using the
+                    refresh endpoint.</p>
+            </div>
+        </section>
+
+        <section id="users" class="section">
+            <h2>User Management</h2>
+
+            <h3>User Lifecycle</h3>
+            <div class="workflow">
+                <div class="workflow-step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <h4>Registration/Invitation</h4>
+                        <p>Users join via self-registration or invitation</p>
+                    </div>
+                </div>
+                <div class="workflow-step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <h4>Email Verification</h4>
+                        <p>Email verification ensures valid contact information</p>
+                    </div>
+                </div>
+                <div class="workflow-step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <h4>Role Assignment</h4>
+                        <p>Users are assigned roles with specific permissions</p>
+                    </div>
+                </div>
+                <div class="workflow-step">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <h4>Active User</h4>
+                        <p>Full access based on assigned roles and permissions</p>
+                    </div>
+                </div>
+            </div>
+
+            <h3>User Invitation System</h3>
+            <p>Administrators can invite new users to join their organization:</p>
+
+            <div class="code-example">
+                <div class="code-header">
+                    <span>POST /api/auth/invite</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>{
+  "email": "newuser@example.com",
+  "role": "member" // Optional role slug
+}</code></pre>
+            </div>
+        </section>
+
+        <section id="organizations" class="section">
+            <h2>Organizations</h2>
+
+            <h3>Multi-Tenancy</h3>
+            <p>Organizations provide complete data isolation:</p>
+            <ul>
+                <li>Each organization has its own users, roles, and permissions</li>
+                <li>Users belong to exactly one organization (except super admins)</li>
+                <li>Cross-organization access is prevented automatically</li>
+            </ul>
+
+            <h3>Organization Settings</h3>
+            <p>Organizations can configure various settings:</p>
+
+            <div class="code-example">
+                <div class="code-header">
+                    <span>PATCH /api/organizations/current/settings</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>{
+  "allowUserRegistration": true,
+  "emailVerificationRequired": true,
+  "passwordPolicy": {
+    "minLength": 8,
+    "requireUppercase": true,
+    "requireLowercase": true,
+    "requireNumbers": true,
+    "requireSpecialChars": true
+  }
+}</code></pre>
+            </div>
+        </section>
+
+        <section id="roles" class="section">
+            <h2>Roles & Permissions</h2>
+
+            <h3>Permission System</h3>
+            <p>The system uses a granular permission model:</p>
+
+            <div class="permission-grid">
+                <div class="permission-category">
+                    <h4>User Permissions</h4>
+                    <ul>
+                        <li>users.create</li>
+                        <li>users.read</li>
+                        <li>users.update</li>
+                        <li>users.delete</li>
+                        <li>users.invite</li>
+                    </ul>
+                </div>
+                <div class="permission-category">
+                    <h4>Role Permissions</h4>
+                    <ul>
+                        <li>roles.create</li>
+                        <li>roles.read</li>
+                        <li>roles.update</li>
+                        <li>roles.delete</li>
+                        <li>roles.assign</li>
+                    </ul>
+                </div>
+                <div class="permission-category">
+                    <h4>Organization</h4>
+                    <ul>
+                        <li>organization.read</li>
+                        <li>organization.update</li>
+                        <li>organization.settings</li>
+                    </ul>
+                </div>
+            </div>
+
+            <h3>Creating Custom Roles</h3>
+            <div class="code-example">
+                <div class="code-header">
+                    <span>POST /api/roles</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>{
+  "name": "Content Manager",
+  "description": "Can manage content but not users",
+  "permissions": [
+    "users.read",
+    "organization.read"
+  ]
+}</code></pre>
+            </div>
+        </section>
+
+        <section id="oauth" class="section">
+            <h2>OAuth Integration</h2>
+
+            <h3>Supported Providers</h3>
+            <ul>
+                <li><strong>Google</strong>: Full profile access</li>
+                <li><strong>GitHub</strong>: Profile and email access</li>
+                <li><strong>Extensible</strong>: Easy to add new providers</li>
+            </ul>
+
+            <h3>OAuth Flow</h3>
+            <div class="workflow">
+                <div class="workflow-step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <h4>Initiate</h4>
+                        <p>Redirect to <code>/api/oauth/google</code></p>
+                    </div>
+                </div>
+                <div class="workflow-step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <h4>Authorize</h4>
+                        <p>User authorizes on provider's site</p>
+                    </div>
+                </div>
+                <div class="workflow-step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <h4>Callback</h4>
+                        <p>Provider returns to callback URL</p>
+                    </div>
+                </div>
+                <div class="workflow-step">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <h4>Complete</h4>
+                        <p>User logged in or account linked</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="mfa" class="section">
+            <h2>Multi-Factor Authentication</h2>
+
+            <h3>TOTP Setup</h3>
+            <p>Users can enable TOTP-based MFA using authenticator apps:</p>
+
+            <div class="code-example">
+                <div class="code-header">
+                    <span>POST /api/mfa/setup/start</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>// Response includes QR code data
+{
+  "success": true,
+  "data": {
+    "secret": "JBSWY3DPEHPK3PXP",
+    "qrCode": "data:image/png;base64,iVBOR...",
+    "backupCodes": ["12345678", "87654321", ...]
+  }
+}</code></pre>
+            </div>
+
+            <h3>Backup Codes</h3>
+            <p>Users receive backup codes during MFA setup for account recovery. These are one-time use codes that can
+                be used when the authenticator app is unavailable.</p>
+
+            <div class="warning-box">
+                <h4>Security Note</h4>
+                <p>Backup codes should be stored securely by users. Each code can only be used once and will be marked
+                    as used after authentication.</p>
+            </div>
+        </section>
+
+        <section id="super-admin" class="section">
+            <h2>Super Admin</h2>
+
+            <h3>System-Wide Access</h3>
+            <p>Super admins have elevated privileges across the entire system:</p>
+            <ul>
+                <li>Manage all organizations and users</li>
+                <li>Access system-wide statistics and monitoring</li>
+                <li>Create and manage other super admin accounts</li>
+                <li>Override organization-level restrictions</li>
+            </ul>
+
+            <h3>Creating Super Admins</h3>
+            <p>Use the provided script to create your first super admin:</p>
+
+            <div class="code-example">
+                <div class="code-header">
+                    <span>Terminal</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>node scripts/createSuperAdmin.js</code></pre>
+            </div>
+
+            <h3>Super Admin Routes</h3>
+            <p>All super admin functionality is available under <code>/api/super-admin/*</code> and requires super admin
+                authentication.</p>
+        </section>
+
+        <section id="examples" class="section">
+            <h2>Code Examples</h2>
+
+            <h3>JavaScript/Node.js Client</h3>
+            <div class="code-example">
+                <div class="code-header">
+                    <span>JavaScript</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>class AuthService {
+  constructor(baseURL) {
+    this.baseURL = baseURL;
+    this.accessToken = localStorage.getItem('accessToken');
+  }
+
+  async login(email, password) {
+    const response = await fetch(`${this.baseURL}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    
+    const data = await response.json();
+    if (data.success) {
+      this.accessToken = data.tokens.accessToken;
+      localStorage.setItem('accessToken', this.accessToken);
+      localStorage.setItem('refreshToken', data.tokens.refreshToken);
+    }
+    
+    return data;
+  }
+
+  async apiCall(endpoint, options = {}) {
+    const response = await fetch(`${this.baseURL}${endpoint}`, {
+      ...options,
+      headers: {
+        ...options.headers,
+        'Authorization': `Bearer ${this.accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (response.status === 401) {
+      await this.refreshToken();
+      return this.apiCall(endpoint, options);
+    }
+    
+    return response.json();
+  }
+}</code></pre>
+            </div>
+
+            <h3>Python Client</h3>
+            <div class="code-example">
+                <div class="code-header">
+                    <span>Python</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>import requests
+from typing import Optional, Dict, Any
+
+class AuthService:
+    def __init__(self, base_url: str):
+        self.base_url = base_url
+        self.access_token: Optional[str] = None
+        self.refresh_token: Optional[str] = None
+    
+    def login(self, email: str, password: str) -> Dict[str, Any]:
+        response = requests.post(
+            f"{self.base_url}/api/auth/login",
+            json={"email": email, "password": password}
+        )
+        
+        data = response.json()
+        if data.get("success"):
+            self.access_token = data["tokens"]["accessToken"]
+            self.refresh_token = data["tokens"]["refreshToken"]
+        
+        return data
+    
+    def api_call(self, endpoint: str, method: str = "GET", **kwargs) -> Dict[str, Any]:
+        headers = kwargs.get("headers", {})
+        if self.access_token:
+            headers["Authorization"] = f"Bearer {self.access_token}"
+        
+        response = requests.request(
+            method, 
+            f"{self.base_url}{endpoint}",
+            headers=headers,
+            **kwargs
+        )
+        
+        return response.json()</code></pre>
+            </div>
+        </section>
+
+        <section id="security" class="section">
+            <h2>Security Best Practices</h2>
+
+            <div class="security-grid">
+                <div class="security-item">
+                    <h3>🔒 Token Security</h3>
+                    <ul>
+                        <li>Store tokens securely (httpOnly cookies recommended)</li>
+                        <li>Implement proper token rotation</li>
+                        <li>Use short-lived access tokens</li>
+                        <li>Validate tokens on every request</li>
+                    </ul>
+                </div>
+                <div class="security-item">
+                    <h3>🌐 Network Security</h3>
+                    <ul>
+                        <li>Always use HTTPS in production</li>
+                        <li>Implement rate limiting</li>
+                        <li>Use CORS properly</li>
+                        <li>Validate all inputs</li>
+                    </ul>
+                </div>
+                <div class="security-item">
+                    <h3>🔑 Password Security</h3>
+                    <ul>
+                        <li>Enforce strong password policies</li>
+                        <li>Use bcrypt for password hashing</li>
+                        <li>Implement account lockout</li>
+                        <li>Require email verification</li>
+                    </ul>
+                </div>
+                <div class="security-item">
+                    <h3>📱 MFA Security</h3>
+                    <ul>
+                        <li>Encourage MFA adoption</li>
+                        <li>Secure backup code storage</li>
+                        <li>Implement proper TOTP validation</li>
+                        <li>Monitor failed MFA attempts</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <section id="troubleshooting" class="section">
+            <h2>Troubleshooting</h2>
+
+            <div class="faq-item">
+                <h3>Authentication Failed (401)</h3>
+                <p><strong>Cause:</strong> Invalid or expired token</p>
+                <p><strong>Solution:</strong> Use refresh token to get new access token, or re-authenticate</p>
+            </div>
+
+            <div class="faq-item">
+                <h3>Insufficient Permissions (403)</h3>
+                <p><strong>Cause:</strong> User lacks required permissions</p>
+                <p><strong>Solution:</strong> Check user roles and assign appropriate permissions</p>
+            </div>
+
+            <div class="faq-item">
+                <h3>MFA Required</h3>
+                <p><strong>Cause:</strong> User has MFA enabled but didn't provide token</p>
+                <p><strong>Solution:</strong> Include mfaToken in login request</p>
+            </div>
+
+            <div class="faq-item">
+                <h3>Rate Limit Exceeded (429)</h3>
+                <p><strong>Cause:</strong> Too many requests from same IP</p>
+                <p><strong>Solution:</strong> Implement request throttling in client application</p>
+            </div>
+
+            <div class="faq-item">
+                <h3>Email Verification Required</h3>
+                <p><strong>Cause:</strong> User account requires email verification</p>
+                <p><strong>Solution:</strong> Check email and click verification link</p>
+            </div>
+        </section>
+    </main>
+
+    <script src="/js/documentation.js"></script>
+</body>
+
+</html>
