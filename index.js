@@ -1,4 +1,5 @@
 const express = require('express');
+const path = require('path');
 const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
@@ -7,8 +8,6 @@ const cookieParser = require('cookie-parser');
 const session = require('express-session');
 const passport = require('passport');
 const rateLimit = require('express-rate-limit');
-
-
 
 // Import configuration and utilities
 const config = require('./config');
@@ -23,6 +22,7 @@ const organizationRoutes = require('./routes/organizations');
 const roleRoutes = require('./routes/roles');
 const oauthRoutes = require('./routes/oauth');
 const mfaRoutes = require('./routes/mfa');
+const superAdminRoutes = require('./routes/superAdmin');
 
 // Handle uncaught exceptions
 process.on('uncaughtException', handleUncaughtException);
@@ -36,7 +36,16 @@ app.set('trust proxy', 1);
 
 // Security middleware
 app.use(helmet({
-    crossOriginResourcePolicy: { policy: "cross-origin" }
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            scriptSrc: ["'self'", "'unsafe-inline'"],
+            imgSrc: ["'self'", "data:", "https:"],
+            connectSrc: ["'self'"]
+        }
+    }
 }));
 
 // CORS configuration
@@ -54,6 +63,9 @@ const limiter = rateLimit({
     legacyHeaders: false
 });
 app.use(limiter);
+
+// Serve static files from public directory
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
@@ -100,68 +112,18 @@ app.get('/health', (req, res) => {
     });
 });
 
-// API documentation endpoint
+// Health check GUI (HTML response)
+app.get('/health/gui', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'health.html'));
+});
+
+// Serve HTML documentation and welcome pages
 app.get('/api/docs', (req, res) => {
-    res.json({
-        success: true,
-        message: 'Authentication Service API',
-        version: '1.0.0',
-        endpoints: {
-            auth: {
-                register: 'POST /api/auth/register',
-                login: 'POST /api/auth/login',
-                logout: 'POST /api/auth/logout',
-                refreshToken: 'POST /api/auth/refresh-token',
-                profile: 'GET /api/auth/profile',
-                changePassword: 'PATCH /api/auth/change-password',
-                forgotPassword: 'POST /api/auth/forgot-password',
-                resetPassword: 'POST /api/auth/reset-password',
-                verifyEmail: 'GET /api/auth/verify-email',
-                resendVerification: 'POST /api/auth/resend-verification',
-                sendInvitation: 'POST /api/auth/invite',
-                acceptInvitation: 'POST /api/auth/accept-invitation'
-            },
-            users: {
-                getUsers: 'GET /api/users',
-                getUserById: 'GET /api/users/:id',
-                updateUser: 'PATCH /api/users/:id',
-                deleteUser: 'DELETE /api/users/:id',
-                getUserRoles: 'GET /api/users/:id/roles',
-                assignRole: 'POST /api/users/:id/roles',
-                removeRole: 'DELETE /api/users/:id/roles/:roleId'
-            },
-            organizations: {
-                getCurrent: 'GET /api/organizations/current',
-                updateCurrent: 'PATCH /api/organizations/current',
-                getSettings: 'GET /api/organizations/current/settings',
-                updateSettings: 'PATCH /api/organizations/current/settings',
-                getStats: 'GET /api/organizations/current/stats'
-            },
-            roles: {
-                getRoles: 'GET /api/roles',
-                createRole: 'POST /api/roles',
-                getRoleById: 'GET /api/roles/:id',
-                updateRole: 'PATCH /api/roles/:id',
-                deleteRole: 'DELETE /api/roles/:id',
-                getPermissions: 'GET /api/roles/permissions'
-            },
-            oauth: {
-                googleLogin: 'GET /api/oauth/google',
-                githubLogin: 'GET /api/oauth/github',
-                getProviders: 'GET /api/oauth/providers',
-                unlinkProvider: 'DELETE /api/oauth/providers/:provider'
-            },
-            mfa: {
-                getStatus: 'GET /api/mfa/status',
-                setupStart: 'POST /api/mfa/setup/start',
-                setupComplete: 'POST /api/mfa/setup/complete',
-                verify: 'POST /api/mfa/verify',
-                disable: 'POST /api/mfa/disable',
-                getBackupCodesCount: 'GET /api/mfa/backup-codes/count',
-                regenerateBackupCodes: 'POST /api/mfa/backup-codes/regenerate'
-            }
-        }
-    });
+    res.sendFile(path.join(__dirname, 'public', 'docs.html'));
+});
+
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // API routes
@@ -171,17 +133,7 @@ app.use('/api/organizations', organizationRoutes);
 app.use('/api/roles', roleRoutes);
 app.use('/api/oauth', oauthRoutes);
 app.use('/api/mfa', mfaRoutes);
-
-// Root endpoint
-app.get('/', (req, res) => {
-    res.json({
-        success: true,
-        message: 'Welcome to Authentication Service API',
-        version: '1.0.0',
-        documentation: '/api/docs',
-        health: '/health'
-    });
-});
+app.use('/api/super-admin', superAdminRoutes);
 
 // 404 handler
 app.use(notFoundHandler);
@@ -213,6 +165,8 @@ ${config.oauth.google.clientId ? '✅ Google OAuth' : '❌ Google OAuth (not con
 ${config.oauth.github.clientId ? '✅ GitHub OAuth' : '❌ GitHub OAuth (not configured)'}
 
 📧 Email Service: ${config.email.smtp.host ? '✅ Enabled' : '❌ Disabled (SMTP not configured)'}
+
+⚡ Super Admin Routes: http://${config.server.host}:${config.server.port}/api/super-admin/*
       `);
         });
 

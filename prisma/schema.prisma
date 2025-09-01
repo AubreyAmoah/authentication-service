@@ -43,6 +43,7 @@ model User {
   avatar            String?
   isEmailVerified   Boolean   @default(false)
   isActive          Boolean   @default(true)
+  isSuperAdmin      Boolean   @default(false)
   lastLoginAt       DateTime?
   emailVerifiedAt   DateTime?
   passwordChangedAt DateTime?
@@ -50,8 +51,8 @@ model User {
   updatedAt         DateTime  @updatedAt
 
   // Organization relation
-  organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   // Relations
   roles              UserRole[]

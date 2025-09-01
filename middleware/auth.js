@@ -5,7 +5,7 @@ const userService = require('../services/userService');
 const roleService = require('../services/roleService');
 
 /**
- * Authenticate user with JWT token
+ * Authenticate user with JWT token (updated to support super admins)
  */
 const authenticate = async (req, res, next) => {
     try {
@@ -32,7 +32,7 @@ const authenticate = async (req, res, next) => {
             return sendError(res, 'Invalid or expired session', 401);
         }
 
-        // Update session activity (replaces req.session.touch())
+        // Update session activity
         await prisma.session.update({
             where: { id: session.id },
             data: { updatedAt: new Date() }
@@ -45,13 +45,16 @@ const authenticate = async (req, res, next) => {
             return sendError(res, 'User not found or inactive', 401);
         }
 
-        if (!user.organization?.isActive) {
-            return sendError(res, 'Organization is inactive', 401);
+        // For super admins, organization check is optional
+        if (!user.isSuperAdmin) {
+            if (!user.organization?.isActive) {
+                return sendError(res, 'Organization is inactive', 401);
+            }
         }
 
-        // Add user and session to request (renamed to avoid Express session confusion)
+        // Add user and session to request
         req.user = user;
-        req.userSession = session; // Changed from req.session to req.userSession
+        req.userSession = session;
         req.token = token;
 
         next();
@@ -62,7 +65,7 @@ const authenticate = async (req, res, next) => {
 };
 
 /**
- * Optional authentication - doesn't fail if no token provided
+ * Optional authentication - doesn't fail if no token provided (updated for super admins)
  */
 const optionalAuth = async (req, res, next) => {
     try {
@@ -92,9 +95,14 @@ const optionalAuth = async (req, res, next) => {
             }).catch(console.error);
 
             const user = await userService.findUserById(decoded.userId);
-            if (user && user.isActive && user.organization?.isActive) {
+
+            // Check if user is valid (super admins don't need active organization)
+            const isValidUser = user && user.isActive &&
+                (user.isSuperAdmin || user.organization?.isActive);
+
+            if (isValidUser) {
                 req.user = user;
-                req.userSession = session; // Changed from req.session to req.userSession
+                req.userSession = session;
                 req.token = token;
             }
         }
@@ -108,7 +116,7 @@ const optionalAuth = async (req, res, next) => {
 };
 
 /**
- * Require specific permission
+ * Require specific permission (updated to support super admins)
  * @param {string} permission - Required permission
  */
 const requirePermission = (permission) => {
@@ -116,6 +124,16 @@ const requirePermission = (permission) => {
         try {
             if (!req.user) {
                 return sendError(res, 'Authentication required', 401);
+            }
+
+            // Super admins have all permissions
+            if (req.user.isSuperAdmin) {
+                return next();
+            }
+
+            // Regular permission check for non-super admins
+            if (!req.user.organizationId) {
+                return sendError(res, 'Organization required for permission check', 403);
             }
 
             const hasPermission = await roleService.userHasPermission(
@@ -137,7 +155,7 @@ const requirePermission = (permission) => {
 };
 
 /**
- * Require any of the specified permissions
+ * Require any of the specified permissions (updated to support super admins)
  * @param {Array} permissions - Array of permissions (user needs at least one)
  */
 const requireAnyPermission = (permissions) => {
@@ -145,6 +163,16 @@ const requireAnyPermission = (permissions) => {
         try {
             if (!req.user) {
                 return sendError(res, 'Authentication required', 401);
+            }
+
+            // Super admins have all permissions
+            if (req.user.isSuperAdmin) {
+                return next();
+            }
+
+            // Regular permission check for non-super admins
+            if (!req.user.organizationId) {
+                return sendError(res, 'Organization required for permission check', 403);
             }
 
             let hasAnyPermission = false;
@@ -175,7 +203,7 @@ const requireAnyPermission = (permissions) => {
 };
 
 /**
- * Require all specified permissions
+ * Require all specified permissions (updated to support super admins)
  * @param {Array} permissions - Array of permissions (user needs all)
  */
 const requireAllPermissions = (permissions) => {
@@ -183,6 +211,16 @@ const requireAllPermissions = (permissions) => {
         try {
             if (!req.user) {
                 return sendError(res, 'Authentication required', 401);
+            }
+
+            // Super admins have all permissions
+            if (req.user.isSuperAdmin) {
+                return next();
+            }
+
+            // Regular permission check for non-super admins
+            if (!req.user.organizationId) {
+                return sendError(res, 'Organization required for permission check', 403);
             }
 
             for (const permission of permissions) {
@@ -206,7 +244,7 @@ const requireAllPermissions = (permissions) => {
 };
 
 /**
- * Require specific role
+ * Require specific role (updated to support super admins)
  * @param {string} roleSlug - Required role slug
  */
 const requireRole = (roleSlug) => {
@@ -214,6 +252,11 @@ const requireRole = (roleSlug) => {
         try {
             if (!req.user) {
                 return sendError(res, 'Authentication required', 401);
+            }
+
+            // Super admins bypass role requirements
+            if (req.user.isSuperAdmin) {
+                return next();
             }
 
             const userRoles = req.user.roles || [];
@@ -232,7 +275,7 @@ const requireRole = (roleSlug) => {
 };
 
 /**
- * Require user to own the resource or have admin role
+ * Require user to own the resource or have admin role (updated to support super admins)
  * @param {string} userIdParam - Request parameter name containing user ID
  */
 const requireOwnershipOrAdmin = (userIdParam = 'userId') => {
@@ -240,6 +283,11 @@ const requireOwnershipOrAdmin = (userIdParam = 'userId') => {
         try {
             if (!req.user) {
                 return sendError(res, 'Authentication required', 401);
+            }
+
+            // Super admins can access any resource
+            if (req.user.isSuperAdmin) {
+                return next();
             }
 
             const targetUserId = req.params[userIdParam];
@@ -262,7 +310,7 @@ const requireOwnershipOrAdmin = (userIdParam = 'userId') => {
 };
 
 /**
- * Ensure user belongs to the same organization as the resource
+ * Ensure user belongs to the same organization as the resource (updated to support super admins)
  * @param {string} orgIdParam - Request parameter name containing organization ID
  */
 const requireSameOrganization = (orgIdParam = 'organizationId') => {
@@ -270,6 +318,11 @@ const requireSameOrganization = (orgIdParam = 'organizationId') => {
         try {
             if (!req.user) {
                 return sendError(res, 'Authentication required', 401);
+            }
+
+            // Super admins can access any organization
+            if (req.user.isSuperAdmin) {
+                return next();
             }
 
             const targetOrgId = req.params[orgIdParam] || req.body[orgIdParam];
@@ -287,7 +340,61 @@ const requireSameOrganization = (orgIdParam = 'organizationId') => {
 };
 
 /**
- * Rate limiting per user
+ * Middleware to check if user is a super admin
+ */
+const requireSuperAdmin = (req, res, next) => {
+    if (!req.user) {
+        return sendError(res, 'Authentication required', 401);
+    }
+
+    if (!req.user.isSuperAdmin) {
+        return sendError(res, 'Super admin access required', 403);
+    }
+
+    next();
+};
+
+/**
+ * Middleware to check if user is super admin OR has specific permission
+ * @param {string} permission - Required permission for non-super admins
+ */
+const requireSuperAdminOrPermission = (permission) => {
+    return async (req, res, next) => {
+        try {
+            if (!req.user) {
+                return sendError(res, 'Authentication required', 401);
+            }
+
+            // If user is super admin, allow access
+            if (req.user.isSuperAdmin) {
+                return next();
+            }
+
+            // Otherwise check permission normally
+            if (!req.user.organizationId) {
+                return sendError(res, 'Organization required for permission check', 403);
+            }
+
+            const hasPermission = await roleService.userHasPermission(
+                req.user.id,
+                permission,
+                req.user.organizationId
+            );
+
+            if (!hasPermission) {
+                return sendError(res, 'Insufficient permissions', 403);
+            }
+
+            next();
+        } catch (error) {
+            console.error('Permission check error:', error);
+            return sendError(res, 'Permission check failed', 500);
+        }
+    };
+};
+
+/**
+ * Rate limiting per user (unchanged)
  * @param {number} maxRequests - Maximum requests per window
  * @param {number} windowMs - Time window in milliseconds
  */
@@ -325,11 +432,16 @@ const rateLimitPerUser = (maxRequests = 100, windowMs = 15 * 60 * 1000) => {
 };
 
 /**
- * Require email verification
+ * Require email verification (updated to support super admins)
  */
 const requireEmailVerification = (req, res, next) => {
     if (!req.user) {
         return sendError(res, 'Authentication required', 401);
+    }
+
+    // Super admins bypass email verification requirement
+    if (req.user.isSuperAdmin) {
+        return next();
     }
 
     if (!req.user.isEmailVerified) {
@@ -348,6 +460,8 @@ module.exports = {
     requireRole,
     requireOwnershipOrAdmin,
     requireSameOrganization,
+    requireSuperAdmin,
+    requireSuperAdminOrPermission,
     rateLimitPerUser,
     requireEmailVerification
 };

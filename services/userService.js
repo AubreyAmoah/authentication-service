@@ -130,6 +130,7 @@ const findUserById = async (userId) => {
             email: true,
             firstName: true,
             lastName: true,
+            isSuperAdmin: true,
             phone: true,
             avatar: true,
             isEmailVerified: true,
