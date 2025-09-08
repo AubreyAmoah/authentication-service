@@ -154,7 +154,7 @@ const startServer = async () => {
         await connectDatabase();
 
         // Start server
-        const server = app.listen(config.server.port, config.server.host, () => {
+        const server = app.listen(config.server.port || 4000, config.server.host, () => {
             console.log(`
 🚀 Authentication Service is running!
 
