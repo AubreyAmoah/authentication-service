@@ -29,6 +29,8 @@ model Organization {
   roles       Role[]
   invitations Invitation[]
   sessions    Session[]
+    // Audit log relationship
+  auditLogs     AuditLog[]
 
   @@map("organizations")
 }
@@ -57,12 +59,19 @@ model User {
   // Relations
   roles              UserRole[]
   sessions           Session[]
+  userSessions      UserSession[]
   passwordResets     PasswordReset[]
   emailVerifications EmailVerification[]
   oauthAccounts      OAuthAccount[]
   invitations        Invitation[]
   mfaSecrets         MFASecret[]
   mfaBackupCodes     MFABackupCode[]
+  auditLogs     AuditLog[]
+  
+  // Additional audit-related fields
+  lastLoginIp   String?
+  loginAttempts Int       @default(0)
+  lockedAt      DateTime?
 
   @@map("users")
 }
@@ -225,4 +234,164 @@ model MFABackupCode {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("mfa_backup_codes")
+}
+
+
+// Audit Log Model
+model AuditLog {
+  id            String   @id @default(cuid())
+  
+  // Core audit fields
+  action        String   // Action performed (LOGIN, LOGOUT, CREATE_USER, etc.)
+  resource      String?  // Resource affected (USER, ORGANIZATION, ROLE, etc.)
+  resourceId    String?  // ID of the affected resource
+  
+  // User information
+  userId        String?  // User who performed the action
+  user          User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  // Session and request information
+  sessionId     String?  // Session identifier
+  ipAddress     String?  // IP address of the request
+  userAgent     String?  // User agent string
+  
+  // Location and device information
+  country       String?  // Country from IP geolocation
+  city          String?  // City from IP geolocation
+  deviceType    String?  // Device type (desktop, mobile, tablet)
+  browser       String?  // Browser information
+  
+  // Audit metadata
+  timestamp     DateTime @default(now())
+  success       Boolean  @default(true)
+  errorMessage  String?  // Error message if action failed
+  
+  // Additional context and details
+  details       Json?    // Flexible JSON field for additional context
+  oldValues     Json?    // Previous values (for update operations)
+  newValues     Json?    // New values (for create/update operations)
+  
+  // Organization context
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  
+  // Risk and security fields
+  riskLevel     RiskLevel @default(LOW)
+  flagged       Boolean   @default(false)
+  reviewedBy    String?   // Admin who reviewed flagged actions
+  reviewedAt    DateTime?
+  reviewNotes   String?
+  
+  // Indexing for performance
+  @@index([userId])
+  @@index([action])
+  @@index([timestamp])
+  @@index([organizationId])
+  @@index([success])
+  @@index([riskLevel])
+  @@index([flagged])
+  @@index([ipAddress])
+  @@index([resourceId])
+  
+  @@map("audit_logs")
+}
+
+// Enum for risk levels
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+model AuditConfiguration {
+  id                    String   @id @default(cuid())
+  
+  // Retention settings
+  retentionDays         Int      @default(365)  // How long to keep audit logs
+  
+  // What to log
+  logLogins             Boolean  @default(true)
+  logLogouts            Boolean  @default(true)
+  logUserCreation       Boolean  @default(true)
+  logUserUpdates        Boolean  @default(true)
+  logUserDeletion       Boolean  @default(true)
+  logRoleChanges        Boolean  @default(true)
+  logPermissionChanges  Boolean  @default(true)
+  logPasswordChanges    Boolean  @default(true)
+  logSuperAdminActions  Boolean  @default(true)
+  logOrganizationChanges Boolean @default(true)
+  logFailedAttempts     Boolean  @default(true)
+  
+  // Security settings
+  autoFlagSuspicious    Boolean  @default(true)
+  maxLoginAttempts      Int      @default(5)
+  lockoutDuration       Int      @default(30)   // minutes
+  
+  // Notification settings
+  notifyOnHighRisk      Boolean  @default(true)
+  notifyOnCriticalRisk  Boolean  @default(true)
+  notificationEmails    String[] // Array of emails to notify
+  
+  // Timestamps
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  
+  @@map("audit_configuration")
+}
+
+// Audit Event Templates for common actions
+model AuditEventTemplate {
+  id          String @id @default(cuid())
+  action      String @unique
+  description String
+  riskLevel   RiskLevel @default(LOW)
+  category    String // AUTHENTICATION, USER_MANAGEMENT, SYSTEM, etc.
+  
+  // Template for details JSON structure
+  detailsSchema Json?
+  
+  // Flags
+  requiresReview    Boolean @default(false)
+  autoFlag          Boolean @default(false)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("audit_event_templates")
+}
+
+// Session tracking for better audit context
+model UserSession {
+  id              String    @id @default(cuid())
+  sessionToken    String    @unique
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Session details
+  ipAddress       String?
+  userAgent       String?
+  country         String?
+  city            String?
+  deviceType      String?
+  browser         String?
+  
+  // Session lifecycle
+  createdAt       DateTime  @default(now())
+  expiresAt       DateTime
+  lastAccessedAt  DateTime  @default(now())
+  isActive        Boolean   @default(true)
+  endedAt         DateTime?
+  endReason       String?   // LOGOUT, TIMEOUT, FORCED, etc.
+  
+  // Security flags
+  isSuspicious    Boolean   @default(false)
+  riskScore       Float     @default(0.0)
+  
+  @@index([userId])
+  @@index([sessionToken])
+  @@index([isActive])
+  @@index([expiresAt])
+  
+  @@map("user_sessions")
 }

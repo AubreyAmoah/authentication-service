@@ -14,6 +14,7 @@ const config = require('./config');
 const { connectDatabase } = require('./utils/database');
 const { initializeOAuth } = require('./plugins/oauth');
 const { errorHandler, notFoundHandler, handleUncaughtException, handleUnhandledRejection } = require('./middleware/errorHandler');
+const deviceInfoMiddleware = require('./middleware/deviceInfo');
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -23,6 +24,7 @@ const roleRoutes = require('./routes/roles');
 const oauthRoutes = require('./routes/oauth');
 const mfaRoutes = require('./routes/mfa');
 const superAdminRoutes = require('./routes/superAdmin');
+const superAdminAuthRoutes = require('./routes/superAdminAuthRoutes');
 
 // Handle uncaught exceptions
 process.on('uncaughtException', handleUncaughtException);
@@ -50,6 +52,9 @@ app.use(helmet({
 
 // CORS configuration
 app.use(cors(config.cors));
+
+// Device info middleware
+app.use(deviceInfoMiddleware);
 
 // Rate limiting
 const limiter = rateLimit({
@@ -138,6 +143,7 @@ app.use('/api/roles', roleRoutes);
 app.use('/api/oauth', oauthRoutes);
 app.use('/api/mfa', mfaRoutes);
 app.use('/api/super-admin', superAdminRoutes);
+app.use('/api/super/auth', superAdminAuthRoutes);
 
 // 404 handler
 app.use(notFoundHandler);
@@ -154,7 +160,7 @@ const startServer = async () => {
         await connectDatabase();
 
         // Start server
-        const server = app.listen(config.server.port || 4000, config.server.host, () => {
+        const server = app.listen(config.server.port, config.server.host, () => {
             console.log(`
 🚀 Authentication Service is running!
 
