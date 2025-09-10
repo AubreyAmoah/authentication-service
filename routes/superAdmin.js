@@ -1,14 +1,13 @@
 const express = require('express');
 const superAdminController = require('../controllers/superAdminController');
 const organizationController = require('../controllers/organizationController');
-const { authenticate, requireSuperAdmin } = require('../middleware/auth');
 const { validateRequest, validateParams, userSchemas, organizationSchemas, paramSchemas } = require('../utils/validation');
+const verifySuperAdminToken = require('../middleware/verifySuperAdminToken');
 
 const router = express.Router();
 
 // All routes require super admin authentication
-router.use(authenticate);
-router.use(requireSuperAdmin);
+router.use(verifySuperAdminToken);
 
 // System statistics and overview
 router.get('/stats', superAdminController.getSystemStats);
@@ -16,7 +15,7 @@ router.get('/stats', superAdminController.getSystemStats);
 // User management across all organizations
 router.get('/users', superAdminController.getAllUsers);
 router.get('/users/:id', validateParams(paramSchemas.uuid), superAdminController.getUserDetails);
-router.post('/users/super-admin', validateRequest(userSchemas.register), superAdminController.createSuperAdmin);
+router.post('/create-super-admin', validateRequest(userSchemas.register), superAdminController.createSuperAdmin);
 router.patch('/users/:id/toggle-super-admin', validateParams(paramSchemas.uuid), superAdminController.toggleSuperAdmin);
 router.delete('/users/:id', validateParams(paramSchemas.uuid), superAdminController.deleteAnyUser);
 

@@ -2,6 +2,7 @@ const userService = require('../services/userService');
 const organizationService = require('../services/organizationService');
 const { sendSuccess, sendError, sendPaginated, asyncHandler, getPaginationParams } = require('../utils/response');
 const { prisma } = require('../utils/database');
+const { AUDIT_ACTIONS, RISK_LEVELS } = require('../config/constants');
 
 /**
  * Get system-wide statistics
@@ -133,6 +134,8 @@ const getAllUsers = asyncHandler(async (req, res) => {
  */
 const createSuperAdmin = asyncHandler(async (req, res) => {
     const { email, password, firstName, lastName } = req.validatedData;
+    const deviceInfo = req.deviceInfo || {};
+    const userId = req.user.userId;
 
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
@@ -140,6 +143,26 @@ const createSuperAdmin = asyncHandler(async (req, res) => {
     });
 
     if (existingUser) {
+        await prisma.auditLog.create({
+            data: {
+                action: AUDIT_ACTIONS.SUPER_ADMIN_CREATED,
+                userId,
+                ipAddress: deviceInfo.ip || null,
+                userAgent: deviceInfo.userAgent || null,
+                deviceType: deviceInfo.deviceType || null,
+                country: deviceInfo.country.name || null,
+                city: deviceInfo.city || null,
+                riskLevel: RISK_LEVELS.CRITICAL,
+                timestamp: new Date(),
+                success: false,
+                details: {
+                    userId,
+                    organizationId: req.user.organizationId || null,
+                    email: req.user.email || null,
+                    info: 'User tried creating super admin but email already exists'
+                }
+            }
+        });
         return sendError(res, 'User with this email already exists', 400);
     }
 
@@ -171,6 +194,26 @@ const createSuperAdmin = asyncHandler(async (req, res) => {
     });
 
     sendSuccess(res, { user: superAdminUser }, 'Super admin created successfully', 201);
+
+    await prisma.auditLog.create({
+        data: {
+            action: AUDIT_ACTIONS.SUPER_ADMIN_CREATED,
+            userId,
+            ipAddress: deviceInfo.ip || null,
+            userAgent: deviceInfo.userAgent || null,
+            deviceType: deviceInfo.deviceType || null,
+            country: deviceInfo.country.name || null,
+            city: deviceInfo.city || null,
+            riskLevel: RISK_LEVELS.CRITICAL,
+            timestamp: new Date(),
+            success: true,
+            details: {
+                userId,
+                organizationId: req.user.organizationId || null,
+                email: req.user.email || null
+            }
+        }
+    });
 });
 
 /**
@@ -178,6 +221,7 @@ const createSuperAdmin = asyncHandler(async (req, res) => {
  */
 const toggleSuperAdmin = asyncHandler(async (req, res) => {
     const { id } = req.params;
+    const userId = req.user.userId;
 
     const user = await prisma.user.findUnique({
         where: { id },
@@ -191,11 +235,51 @@ const toggleSuperAdmin = asyncHandler(async (req, res) => {
     });
 
     if (!user) {
+        await prisma.auditLog.create({
+            data: {
+                action: AUDIT_ACTIONS.SUPER_ADMIN_TOGGLED,
+                userId,
+                ipAddress: deviceInfo.ip || null,
+                userAgent: deviceInfo.userAgent || null,
+                deviceType: deviceInfo.deviceType || null,
+                country: deviceInfo.country.name || null,
+                city: deviceInfo.city || null,
+                riskLevel: RISK_LEVELS.CRITICAL,
+                timestamp: new Date(),
+                success: false,
+                details: {
+                    userId,
+                    organizationId: req.user.organizationId || null,
+                    email: req.user.email || null,
+                    info: 'User tried toggling super admin but user not found'
+                }
+            }
+        });
         return sendError(res, 'User not found', 404);
     }
 
     // Prevent removing super admin status from yourself
     if (req.user.id === id && user.isSuperAdmin) {
+        await prisma.auditLog.create({
+            data: {
+                action: AUDIT_ACTIONS.SUPER_ADMIN_TOGGLED,
+                userId,
+                ipAddress: deviceInfo.ip || null,
+                userAgent: deviceInfo.userAgent || null,
+                deviceType: deviceInfo.deviceType || null,
+                country: deviceInfo.country.name || null,
+                city: deviceInfo.city || null,
+                riskLevel: RISK_LEVELS.CRITICAL,
+                timestamp: new Date(),
+                success: false,
+                details: {
+                    userId,
+                    organizationId: req.user.organizationId || null,
+                    email: req.user.email || null,
+                    info: 'User tried removing their own super admin status'
+                }
+            }
+        });
         return sendError(res, 'Cannot remove super admin status from yourself', 400);
     }
 
@@ -214,6 +298,27 @@ const toggleSuperAdmin = asyncHandler(async (req, res) => {
 
     const action = updatedUser.isSuperAdmin ? 'granted' : 'revoked';
     sendSuccess(res, { user: updatedUser }, `Super admin access ${action} successfully`);
+
+    await prisma.auditLog.create({
+        data: {
+            action: AUDIT_ACTIONS.SUPER_ADMIN_TOGGLED,
+            userId,
+            ipAddress: deviceInfo.ip || null,
+            userAgent: deviceInfo.userAgent || null,
+            deviceType: deviceInfo.deviceType || null,
+            country: deviceInfo.country.name || null,
+            city: deviceInfo.city || null,
+            riskLevel: RISK_LEVELS.CRITICAL,
+            timestamp: new Date(),
+            success: true,
+            details: {
+                userId,
+                organizationId: req.user.organizationId || null,
+                email: req.user.email || null,
+                indo: `Super admin status ${action} for user ${updatedUser.email}`
+            }
+        }
+    });
 });
 
 /**
@@ -221,6 +326,7 @@ const toggleSuperAdmin = asyncHandler(async (req, res) => {
  */
 const deleteAnyUser = asyncHandler(async (req, res) => {
     const { id } = req.params;
+    const userId = req.user.userId;
 
     const user = await prisma.user.findUnique({
         where: { id },
@@ -234,11 +340,51 @@ const deleteAnyUser = asyncHandler(async (req, res) => {
     });
 
     if (!user) {
+        await prisma.auditLog.create({
+            data: {
+                action: AUDIT_ACTIONS.USER_DELETED,
+                userId,
+                ipAddress: deviceInfo.ip || null,
+                userAgent: deviceInfo.userAgent || null,
+                deviceType: deviceInfo.deviceType || null,
+                country: deviceInfo.country.name || null,
+                city: deviceInfo.city || null,
+                riskLevel: RISK_LEVELS.CRITICAL,
+                timestamp: new Date(),
+                success: false,
+                details: {
+                    userId,
+                    organizationId: req.user.organizationId || null,
+                    email: req.user.email || null,
+                    info: 'User tried deleting a user but user not found'
+                }
+            }
+        });
         return sendError(res, 'User not found', 404);
     }
 
     // Prevent self-deletion
     if (req.user.id === id) {
+        await prisma.auditLog.create({
+            data: {
+                action: AUDIT_ACTIONS.USER_DELETED,
+                userId,
+                ipAddress: deviceInfo.ip || null,
+                userAgent: deviceInfo.userAgent || null,
+                deviceType: deviceInfo.deviceType || null,
+                country: deviceInfo.country.name || null,
+                city: deviceInfo.city || null,
+                riskLevel: RISK_LEVELS.CRITICAL,
+                timestamp: new Date(),
+                success: false,
+                details: {
+                    userId,
+                    organizationId: req.user.organizationId || null,
+                    email: req.user.email || null,
+                    info: 'User tried deleting their own account'
+                }
+            }
+        });
         return sendError(res, 'Cannot delete your own account', 400);
     }
 
@@ -248,6 +394,27 @@ const deleteAnyUser = asyncHandler(async (req, res) => {
     });
 
     sendSuccess(res, null, 'User deleted successfully');
+
+    await prisma.auditLog.create({
+        data: {
+            action: AUDIT_ACTIONS.USER_DELETED,
+            userId,
+            ipAddress: deviceInfo.ip || null,
+            userAgent: deviceInfo.userAgent || null,
+            deviceType: deviceInfo.deviceType || null,
+            country: deviceInfo.country.name || null,
+            city: deviceInfo.city || null,
+            riskLevel: RISK_LEVELS.CRITICAL,
+            timestamp: new Date(),
+            success: true,
+            details: {
+                userId,
+                organizationId: req.user.organizationId || null,
+                email: req.user.email || null,
+                info: `User deleted: ${user.email}`
+            }
+        }
+    });
 });
 
 /**
@@ -256,6 +423,7 @@ const deleteAnyUser = asyncHandler(async (req, res) => {
 const getAllSessions = asyncHandler(async (req, res) => {
     const { page, limit } = getPaginationParams(req.query);
     const { organizationId, userId, isActive } = req.query;
+
 
     const skip = (page - 1) * limit;
 
@@ -310,6 +478,27 @@ const getAllSessions = asyncHandler(async (req, res) => {
         total,
         totalPages: Math.ceil(total / limit)
     }, 'Sessions retrieved successfully');
+
+    await prisma.auditLog.create({
+        data: {
+            action: "USER SESSIONS RETIEVED",
+            userId,
+            ipAddress: deviceInfo.ip || null,
+            userAgent: deviceInfo.userAgent || null,
+            deviceType: deviceInfo.deviceType || null,
+            country: deviceInfo.country.name || null,
+            city: deviceInfo.city || null,
+            riskLevel: RISK_LEVELS.CRITICAL,
+            timestamp: new Date(),
+            success: true,
+            details: {
+                userId,
+                organizationId: req.user.organizationId || null,
+                email: req.user.email || null,
+                info: `User sessions retrieved`
+            }
+        }
+    });
 });
 
 /**
@@ -334,11 +523,51 @@ const revokeAnySession = asyncHandler(async (req, res) => {
     });
 
     if (!session) {
+        await prisma.auditLog.create({
+            data: {
+                action: AUDIT_ACTIONS.USER_SESSION_REVOKED,
+                userId: req.user.userId,
+                ipAddress: deviceInfo.ip || null,
+                userAgent: deviceInfo.userAgent || null,
+                deviceType: deviceInfo.deviceType || null,
+                country: deviceInfo.country.name || null,
+                city: deviceInfo.city || null,
+                riskLevel: RISK_LEVELS.CRITICAL,
+                timestamp: new Date(),
+                success: false,
+                details: {
+                    userId: req.user.userId,
+                    organizationId: req.user.organizationId || null,
+                    email: req.user.email || null,
+                    info: 'User tried revoking session but session notfound'
+                }
+            }
+        });
         return sendError(res, 'Session not found', 404);
     }
 
     // Prevent revoking your own session
     if (req.user.id === session.userId && req.userSession.id === sessionId) {
+        await prisma.auditLog.create({
+            data: {
+                action: AUDIT_ACTIONS.USER_SESSION_REVOKED,
+                userId: req.user.userId,
+                ipAddress: deviceInfo.ip || null,
+                userAgent: deviceInfo.userAgent || null,
+                deviceType: deviceInfo.deviceType || null,
+                country: deviceInfo.country.name || null,
+                city: deviceInfo.city || null,
+                riskLevel: RISK_LEVELS.CRITICAL,
+                timestamp: new Date(),
+                success: false,
+                details: {
+                    userId: req.user.userId,
+                    organizationId: req.user.organizationId || null,
+                    email: req.user.email || null,
+                    info: 'User tried revoking own session'
+                }
+            }
+        });
         return sendError(res, 'Cannot revoke your own current session', 400);
     }
 
@@ -348,6 +577,26 @@ const revokeAnySession = asyncHandler(async (req, res) => {
     });
 
     sendSuccess(res, null, 'Session revoked successfully');
+    await prisma.auditLog.create({
+        data: {
+            action: AUDIT_ACTIONS.USER_SESSION_REVOKED,
+            userId: req.user.userId,
+            ipAddress: deviceInfo.ip || null,
+            userAgent: deviceInfo.userAgent || null,
+            deviceType: deviceInfo.deviceType || null,
+            country: deviceInfo.country.name || null,
+            city: deviceInfo.city || null,
+            riskLevel: RISK_LEVELS.CRITICAL,
+            timestamp: new Date(),
+            success: true,
+            details: {
+                userId: req.user.userId,
+                organizationId: req.user.organizationId || null,
+                email: req.user.email || null,
+                info: `Session revoked for user ${session.user.email}`
+            }
+        }
+    });
 });
 
 /**

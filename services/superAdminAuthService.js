@@ -20,22 +20,93 @@ const superAdminAuthService = {
       });
 
       if (!user) {
+        await prisma.auditLog.create({
+          data: {
+            action: AUDIT_ACTIONS.SUPER_ADMIN_LOGIN,
+            ipAddress: deviceInfo.ip || null,
+            userAgent: deviceInfo.userAgent || null,
+            deviceType: deviceInfo.deviceType || null,
+            country: deviceInfo.country.name || null,
+            city: deviceInfo.city || null,
+            riskLevel: RISK_LEVELS.CRITICAL,
+            timestamp: new Date(),
+            user: { connect: { id: user.id } },
+            details: {
+              userId: user.id,
+              organizationId: user.organizationId || null,
+              email: user.email,
+              info: 'Failed login attempt - user not found'
+            }
+          }
+        });
         throw new Error('Invalid credentials');
       }
 
       // Check if user is active
       if (!user.isActive) {
+        await prisma.auditLog.create({
+          data: {
+            action: AUDIT_ACTIONS.SUPER_ADMIN_LOGIN,
+            ipAddress: deviceInfo.ip || null,
+            userAgent: deviceInfo.userAgent || null,
+            deviceType: deviceInfo.deviceType || null,
+            country: deviceInfo.country.name || null,
+            city: deviceInfo.city || null,
+            riskLevel: RISK_LEVELS.CRITICAL,
+            timestamp: new Date(),
+            user: { connect: { id: user.id } },
+            details: {
+              userId: user.id,
+              organizationId: user.organizationId || null,
+              email: user.email,
+              info: 'Failed login attempt - account deactivated'
+            }
+          }
+        });
+
         throw new Error('Account is deactivated');
       }
 
       // Check if user is super admin
       if (!user.isSuperAdmin) {
+        await prisma.auditLog.create({
+          data: {
+            action: AUDIT_ACTIONS.SUPER_ADMIN_LOGIN,
+            ipAddress: deviceInfo.ip || null,
+            userAgent: deviceInfo.userAgent || null,
+            deviceType: deviceInfo.deviceType || null,
+            country: deviceInfo.country.name || null,
+            city: deviceInfo.city || null,
+            riskLevel: RISK_LEVELS.CRITICAL,
+            timestamp: new Date(),
+            user: { connect: { id: user.id } },
+            details: {
+              userId: user.id, organizationId: user.organizationId || null, email: user.email, info: 'Failed login attempt - not a super admin'
+            }
+          }
+        });
         throw new Error('Access denied: Super admin privileges required');
       }
 
       // Verify password
       const isPasswordValid = await bcrypt.compare(password, user.password);
       if (!isPasswordValid) {
+        await prisma.auditLog.create({
+          data: {
+            action: AUDIT_ACTIONS.SUPER_ADMIN_LOGIN,
+            ipAddress: deviceInfo.ip || null,
+            userAgent: deviceInfo.userAgent || null,
+            deviceType: deviceInfo.deviceType || null,
+            country: deviceInfo.country.name || null,
+            city: deviceInfo.city || null,
+            riskLevel: RISK_LEVELS.CRITICAL,
+            timestamp: new Date(),
+            user: { connect: { id: user.id } },
+            details: {
+              userId: user.id, organizationId: user.organizationId || null, email: user.email, info: 'Failed login attempt - incorrect password'
+            }
+          }
+        });
         throw new Error('Invalid credentials');
       }
 
@@ -60,7 +131,33 @@ const superAdminAuthService = {
       // Update last login
       await prisma.user.update({
         where: { id: user.id },
-        data: { lastLoginAt: new Date() }
+        data: { lastLoginAt: new Date(), lastLoginIp: deviceInfo.ip || null }
+      });
+
+      await prisma.loginAttempts.create({
+        data: {
+          userId: user.id,
+          createdAt: new Date(),
+          ipAddress: deviceInfo.ip || null,
+          userAgent: deviceInfo.userAgent || null,
+          deviceType: deviceInfo.deviceType || null,
+          country: deviceInfo.country.name || null,
+          city: deviceInfo.city || null,
+          browser: deviceInfo.browser.name || null
+        }
+      });
+
+      // Create session
+
+      await prisma.session.create({
+        data: {
+          token,
+          ipAddress: deviceInfo.ip || null,
+          userAgent: deviceInfo.userAgent || null,
+          createdAt: new Date(),
+          expiresAt: new Date(Date.now() + (parseInt(process.env.JWT_EXPIRES_IN_MS) || 3600000)),
+          user: { connect: { id: user.id } }
+        }
       });
 
       // Log super admin login
@@ -74,6 +171,7 @@ const superAdminAuthService = {
           city: deviceInfo.city || null,
           riskLevel: RISK_LEVELS.CRITICAL,
           timestamp: new Date(),
+          user: { connect: { id: user.id } },
           details: {
             userId: user.id, organizationId: user.organizationId || null, email: user.email
           }
