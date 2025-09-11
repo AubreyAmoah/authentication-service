@@ -1,4 +1,5 @@
 const organizationService = require('../services/organizationService');
+const { prisma } = require('../utils/database');
 const { sendSuccess, sendError, sendPaginated, asyncHandler, getPaginationParams } = require('../utils/response');
 
 /**
@@ -22,6 +23,27 @@ const updateCurrentOrganization = asyncHandler(async (req, res) => {
         req.user.organizationId,
         req.validatedData
     );
+
+    await prisma.auditLog.create({
+        data: {
+            action: AUDIT_ACTIONS.ORGANIZATION_UPDATED,
+            userId: req.user.id,
+            ipAddress: req.deviceInfo.ip || null,
+            userAgent: req.deviceInfo.userAgent || null,
+            deviceType: req.deviceInfo.deviceType || null,
+            country: req.deviceInfo.country.name || null,
+            city: req.deviceInfo.city || null,
+            riskLevel: RISK_LEVELS.MEDIUM,
+            timestamp: new Date(),
+            user: { connect: { id: req.user.id } },
+            details: {
+                organizationId: req.user.organizationId,
+                changes: req.validatedData,
+                timestamp: new Date(),
+                info: 'Organization details updated'
+            }
+        }
+    });
 
     sendSuccess(res, { organization: updatedOrganization }, 'Organization updated successfully');
 });
@@ -133,11 +155,50 @@ const updateOrganizationById = asyncHandler(async (req, res) => {
     const organization = await organizationService.findOrganizationById(id);
 
     if (!organization) {
+        await prisma.auditLog.create({
+            data: {
+                action: AUDIT_ACTIONS.UNAUTHORIZED_ACCESS,
+                userId: req.user.id,
+                ipAddress: req.deviceInfo.ip || null,
+                userAgent: req.deviceInfo.userAgent || null,
+                deviceType: req.deviceInfo.deviceType || null,
+                country: req.deviceInfo.country.name || null,
+                city: req.deviceInfo.city || null,
+                riskLevel: RISK_LEVELS.HIGH,
+                timestamp: new Date(),
+                user: { connect: { id: req.user.id } },
+                details: {
+                    attemptedOrganizationId: id,
+                    timestamp: new Date(),
+                    info: 'Attempted to update a non-existent organization'
+                }
+            }
+        });
         return sendError(res, 'Organization not found', 404);
     }
 
     const updatedOrganization = await organizationService.updateOrganization(id, req.validatedData);
 
+    await prisma.auditLog.create({
+        data: {
+            action: AUDIT_ACTIONS.ORGANIZATION_UPDATED,
+            userId: req.user.id,
+            ipAddress: req.deviceInfo.ip || null,
+            userAgent: req.deviceInfo.userAgent || null,
+            deviceType: req.deviceInfo.deviceType || null,
+            country: req.deviceInfo.country.name || null,
+            city: req.deviceInfo.city || null,
+            riskLevel: RISK_LEVELS.MEDIUM,
+            timestamp: new Date(),
+            user: { connect: { id: req.user.id } },
+            details: {
+                organizationId: id,
+                changes: req.validatedData,
+                timestamp: new Date(),
+                info: 'Organization details updated'
+            }
+        }
+    });
     sendSuccess(res, { organization: updatedOrganization }, 'Organization updated successfully');
 });
 
@@ -150,14 +211,72 @@ const deactivateOrganization = asyncHandler(async (req, res) => {
     const organization = await organizationService.findOrganizationById(id);
 
     if (!organization) {
+        await prisma.auditLog.create({
+            data: {
+                action: AUDIT_ACTIONS.UNAUTHORIZED_ACCESS,
+                userId: req.user.id,
+                ipAddress: req.deviceInfo.ip || null,
+                userAgent: req.deviceInfo.userAgent || null,
+                deviceType: req.deviceInfo.deviceType || null,
+                country: req.deviceInfo.country.name || null,
+                city: req.deviceInfo.city || null,
+                riskLevel: RISK_LEVELS.HIGH,
+                timestamp: new Date(),
+                user: { connect: { id: req.user.id } },
+                details: {
+                    attemptedOrganizationId: id,
+                    timestamp: new Date(),
+                    info: 'Attempted to deactivate a non-existent organization'
+                }
+            }
+        });
         return sendError(res, 'Organization not found', 404);
     }
 
     if (!organization.isActive) {
+        await prisma.auditLog.create({
+            data: {
+                action: AUDIT_ACTIONS.UNAUTHORIZED_ACCESS,
+                userId: req.user.id,
+                ipAddress: req.deviceInfo.ip || null,
+                userAgent: req.deviceInfo.userAgent || null,
+                deviceType: req.deviceInfo.deviceType || null,
+                country: req.deviceInfo.country.name || null,
+                city: req.deviceInfo.city || null,
+                riskLevel: RISK_LEVELS.HIGH,
+                timestamp: new Date(),
+                user: { connect: { id: req.user.id } },
+                details: {
+                    organizationId: id,
+                    timestamp: new Date(),
+                    info: 'Attempted to deactivate an already deactivated organization'
+                }
+            }
+        });
         return sendError(res, 'Organization is already deactivated', 400);
     }
 
     const updatedOrganization = await organizationService.deactivateOrganization(id);
+
+    await prisma.auditLog.create({
+        data: {
+            action: AUDIT_ACTIONS.ORGANIZATION_DELETED,
+            userId: req.user.id,
+            ipAddress: req.deviceInfo.ip || null,
+            userAgent: req.deviceInfo.userAgent || null,
+            deviceType: req.deviceInfo.deviceType || null,
+            country: req.deviceInfo.country.name || null,
+            city: req.deviceInfo.city || null,
+            riskLevel: RISK_LEVELS.MEDIUM,
+            timestamp: new Date(),
+            user: { connect: { id: req.user.id } },
+            details: {
+                organizationId: id,
+                timestamp: new Date(),
+                info: 'Organization deactivated'
+            }
+        }
+    });
 
     sendSuccess(res, { organization: updatedOrganization }, 'Organization deactivated successfully');
 });
@@ -171,15 +290,72 @@ const reactivateOrganization = asyncHandler(async (req, res) => {
     const organization = await organizationService.findOrganizationById(id);
 
     if (!organization) {
+        await prisma.auditLog.create({
+            data: {
+                action: AUDIT_ACTIONS.UNAUTHORIZED_ACCESS,
+                userId: req.user.id,
+                ipAddress: req.deviceInfo.ip || null,
+                userAgent: req.deviceInfo.userAgent || null,
+                deviceType: req.deviceInfo.deviceType || null,
+                country: req.deviceInfo.country.name || null,
+                city: req.deviceInfo.city || null,
+                riskLevel: RISK_LEVELS.HIGH,
+                timestamp: new Date(),
+                user: { connect: { id: req.user.id } },
+                details: {
+                    attemptedOrganizationId: id,
+                    timestamp: new Date(),
+                    info: 'Attempted to reactivate a non-existent organization'
+                }
+            }
+        });
         return sendError(res, 'Organization not found', 404);
     }
 
     if (organization.isActive) {
+        await prisma.auditLog.create({
+            data: {
+                action: AUDIT_ACTIONS.UNAUTHORIZED_ACCESS,
+                userId: req.user.id,
+                ipAddress: req.deviceInfo.ip || null,
+                userAgent: req.deviceInfo.userAgent || null,
+                deviceType: req.deviceInfo.deviceType || null,
+                country: req.deviceInfo.country.name || null,
+                city: req.deviceInfo.city || null,
+                riskLevel: RISK_LEVELS.HIGH,
+                timestamp: new Date(),
+                user: { connect: { id: req.user.id } },
+                details: {
+                    organizationId: id,
+                    timestamp: new Date(),
+                    info: 'Attempted to reactivate an already active organization'
+                }
+            }
+        });
         return sendError(res, 'Organization is already active', 400);
     }
 
     const updatedOrganization = await organizationService.reactivateOrganization(id);
 
+    await prisma.auditLog.create({
+        data: {
+            action: AUDIT_ACTIONS.ORGANIZATION_REACTIVATED,
+            userId: req.user.id,
+            ipAddress: req.deviceInfo.ip || null,
+            userAgent: req.deviceInfo.userAgent || null,
+            deviceType: req.deviceInfo.deviceType || null,
+            country: req.deviceInfo.country.name || null,
+            city: req.deviceInfo.city || null,
+            riskLevel: RISK_LEVELS.MEDIUM,
+            timestamp: new Date(),
+            user: { connect: { id: req.user.id } },
+            details: {
+                organizationId: id,
+                timestamp: new Date(),
+                info: 'Organization reactivated'
+            }
+        }
+    });
     sendSuccess(res, { organization: updatedOrganization }, 'Organization reactivated successfully');
 });
 
@@ -192,11 +368,49 @@ const deleteOrganization = asyncHandler(async (req, res) => {
     const organization = await organizationService.findOrganizationById(id);
 
     if (!organization) {
+        await prisma.auditLog.create({
+            data: {
+                action: AUDIT_ACTIONS.UNAUTHORIZED_ACCESS,
+                userId: req.user.id,
+                ipAddress: req.deviceInfo.ip || null,
+                userAgent: req.deviceInfo.userAgent || null,
+                deviceType: req.deviceInfo.deviceType || null,
+                country: req.deviceInfo.country.name || null,
+                city: req.deviceInfo.city || null,
+                riskLevel: RISK_LEVELS.HIGH,
+                timestamp: new Date(),
+                user: { connect: { id: req.user.id } },
+                details: {
+                    attemptedOrganizationId: id,
+                    timestamp: new Date(),
+                    info: 'Attempted to delete a non-existent organization'
+                }
+            }
+        });
         return sendError(res, 'Organization not found', 404);
     }
 
     await organizationService.deleteOrganization(id);
 
+    await prisma.auditLog.create({
+        data: {
+            action: AUDIT_ACTIONS.ORGANIZATION_DELETED,
+            userId: req.user.id,
+            ipAddress: req.deviceInfo.ip || null,
+            userAgent: req.deviceInfo.userAgent || null,
+            deviceType: req.deviceInfo.deviceType || null,
+            country: req.deviceInfo.country.name || null,
+            city: req.deviceInfo.city || null,
+            riskLevel: RISK_LEVELS.CRITICAL,
+            timestamp: new Date(),
+            user: { connect: { id: req.user.id } },
+            details: {
+                organizationId: id,
+                timestamp: new Date(),
+                info: 'Organization deleted'
+            }
+        }
+    });
     sendSuccess(res, null, 'Organization deleted successfully');
 });
 

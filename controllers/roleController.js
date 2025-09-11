@@ -1,5 +1,6 @@
 const roleService = require('../services/roleService');
 const { sendSuccess, sendError, sendPaginated, asyncHandler, getPaginationParams } = require('../utils/response');
+const prisma = require('../utils/database')
 
 /**
  * Get all roles for current organization
@@ -7,7 +8,6 @@ const { sendSuccess, sendError, sendPaginated, asyncHandler, getPaginationParams
 const getRoles = asyncHandler(async (req, res) => {
     const { page, limit } = getPaginationParams(req.query);
     const { search, sortBy, sortOrder } = req.query;
-
     const result = await roleService.getOrganizationRoles(req.user.organizationId, {
         page,
         limit,
@@ -40,6 +40,26 @@ const getRoleById = asyncHandler(async (req, res) => {
 const createRole = asyncHandler(async (req, res) => {
     const role = await roleService.createRole(req.validatedData, req.user.organizationId);
 
+    await prisma.auditLog.create({
+        data: {
+            action: 'ROLE_CREATED',
+            ipAddress: req.ip || null,
+            userAgent: req.headers['user-agent'] || null,
+            deviceType: req.deviceType || null,
+            country: req.country ? req.country.name : null,
+            city: req.city ? req.city.name : null,
+            riskLevel: 'LOW',
+            timestamp: new Date(),
+            user: { connect: { id: req.user.id } },
+            details: {
+                userId: req.user.id,
+                organizationId: req.user.organizationId || null,
+                roleId: role.id,
+                roleName: role.name,
+                info: 'Role created successfully'
+            }
+        }
+    });
     sendSuccess(res, { role }, 'Role created successfully', 201);
 });
 
@@ -53,16 +73,73 @@ const updateRole = asyncHandler(async (req, res) => {
     const existingRole = await roleService.findRoleById(id, req.user.organizationId);
 
     if (!existingRole) {
+        await prisma.auditLog.create({
+            data: {
+                action: 'ROLE_UPDATED',
+                ipAddress: req.ip || null,
+                userAgent: req.headers['user-agent'] || null,
+                deviceType: req.deviceType || null,
+                country: req.country ? req.country.name : null,
+                city: req.city ? req.city.name : null,
+                riskLevel: 'LOW',
+                timestamp: new Date(),
+                user: { connect: { id: req.user.id } },
+                details: {
+                    userId: req.user.id,
+                    organizationId: req.user.organizationId || null,
+                    roleId: id,
+                    info: 'Failed role update attempt - role not found'
+                }
+            }
+        });
         return sendError(res, 'Role not found', 404);
     }
 
     // Prevent updating default role
     if (existingRole.isDefault) {
+        await prisma.auditLog.create({
+            data: {
+                action: 'ROLE_UPDATED',
+                ipAddress: req.ip || null,
+                userAgent: req.headers['user-agent'] || null,
+                deviceType: req.deviceType || null,
+                country: req.country ? req.country.name : null,
+                city: req.city ? req.city.name : null,
+                riskLevel: 'LOW',
+                timestamp: new Date(),
+                user: { connect: { id: req.user.id } },
+                details: {
+                    userId: req.user.id,
+                    organizationId: req.user.organizationId || null,
+                    roleId: id,
+                    info: 'Failed role update attempt - cannot modify default role'
+                }
+            }
+        });
         return sendError(res, 'Cannot modify default role', 400);
     }
 
     const updatedRole = await roleService.updateRole(id, req.user.organizationId, req.validatedData);
-
+    await prisma.auditLog.create({
+        data: {
+            action: 'ROLE_UPDATED',
+            ipAddress: req.ip || null,
+            userAgent: req.headers['user-agent'] || null,
+            deviceType: req.deviceType || null,
+            country: req.country ? req.country.name : null,
+            city: req.city ? req.city.name : null,
+            riskLevel: 'LOW',
+            timestamp: new Date(),
+            user: { connect: { id: req.user.id } },
+            details: {
+                userId: req.user.id,
+                organizationId: req.user.organizationId || null,
+                roleId: updatedRole.id,
+                roleName: updatedRole.name,
+                info: 'Role updated successfully'
+            }
+        }
+    });
     sendSuccess(res, { role: updatedRole }, 'Role updated successfully');
 });
 
@@ -73,6 +150,26 @@ const deleteRole = asyncHandler(async (req, res) => {
     const { id } = req.params;
 
     await roleService.deleteRole(id, req.user.organizationId);
+
+    await prisma.auditLog.create({
+        data: {
+            action: 'ROLE_DELETED',
+            ipAddress: req.deviceInfo.ip || null,
+            userAgent: req.deviceInfo.userAgent || null,
+            deviceType: req.deviceInfo.deviceType || null,
+            country: req.deviceInfo.country.name || null,
+            city: req.deviceInfo.city || null,
+            riskLevel: 'LOW',
+            timestamp: new Date(),
+            user: { connect: { id: req.user.id } },
+            details: {
+                userId: req.user.id,
+                organizationId: req.user.organizationId || null,
+                roleId: id,
+                info: 'Role deleted successfully'
+            }
+        }
+    });
 
     sendSuccess(res, null, 'Role deleted successfully');
 });
@@ -109,6 +206,26 @@ const assignRoleToUser = asyncHandler(async (req, res) => {
 
     const userRole = await roleService.assignRoleToUser(userId, roleId, req.user.organizationId);
 
+    await prisma.auditLog.create({
+        data: {
+            action: 'ROLE_ASSIGNED',
+            ipAddress: req.deviceInfo.ip || null,
+            userAgent: req.deviceInfo.userAgent || null,
+            deviceType: req.deviceInfo.deviceType || null,
+            country: req.deviceInfo.country.name || null,
+            city: req.deviceInfo.city || null,
+            riskLevel: 'LOW',
+            timestamp: new Date(),
+            user: { connect: { id: req.user.id } },
+            details: {
+                userId: req.user.id,
+                organizationId: req.user.organizationId || null,
+                assignedUserId: userRole.userId,
+                roleId: userRole.roleId,
+                info: 'Role assigned to user successfully'
+            }
+        }
+    });
     sendSuccess(res, { userRole }, 'Role assigned to user successfully');
 });
 
@@ -120,6 +237,26 @@ const removeRoleFromUser = asyncHandler(async (req, res) => {
 
     await roleService.removeRoleFromUser(userId, roleId, req.user.organizationId);
 
+    await prisma.auditLog.create({
+        data: {
+            action: 'ROLE_REMOVED',
+            ipAddress: req.deviceInfo.ip || null,
+            userAgent: req.deviceInfo.userAgent || null,
+            deviceType: req.deviceInfo.deviceType || null,
+            country: req.deviceInfo.country.name || null,
+            city: req.deviceInfo.city || null,
+            riskLevel: 'LOW',
+            timestamp: new Date(),
+            user: { connect: { id: req.user.id } },
+            details: {
+                userId: req.user.id,
+                organizationId: req.user.organizationId || null,
+                removedUserId: userId,
+                roleId: roleId,
+                info: 'Role removed from user successfully'
+            }
+        }
+    });
     sendSuccess(res, null, 'Role removed from user successfully');
 });
 
@@ -172,8 +309,6 @@ const checkUserPermission = asyncHandler(async (req, res) => {
  * Get role statistics
  */
 const getRoleStats = asyncHandler(async (req, res) => {
-    const { prisma } = require('../utils/database');
-
     const [
         totalRoles,
         defaultRoles,

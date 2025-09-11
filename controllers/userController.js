@@ -1,7 +1,8 @@
 const userService = require('../services/userService');
 const roleService = require('../services/roleService');
 const { sendSuccess, sendError, sendPaginated, asyncHandler, getPaginationParams, getSortParams, getSearchParams } = require('../utils/response');
-
+const prisma = require('../utils/database');
+const { AUDIT_ACTIONS } = require('../config/constants');
 /**
  * Get all users in organization
  */
@@ -50,16 +51,79 @@ const updateUser = asyncHandler(async (req, res) => {
     const existingUser = await userService.findUserById(id);
 
     if (!existingUser) {
+        await prisma.auditLog.create({
+            data: {
+                action: AUDIT_ACTIONS.USER_UPDATED,
+                userId: req.user.id,
+                ipAddress: req.deviceInfo.ip || null,
+                userAgent: req.deviceInfo.userAgent || null,
+                deviceType: req.deviceInfo.deviceType || null,
+                country: req.deviceInfo.country.name || null,
+                city: req.deviceInfo.city || null,
+                riskLevel: RISK_LEVELS.MEDIUM,
+                timestamp: new Date(),
+                user: { connect: { id: req.user.id } },
+                details: {
+                    userId: id,
+                    organizationId: null,
+                    email: null,
+                    info: 'Attempted to update non-existent user'
+                }
+            }
+        });
         return sendError(res, 'User not found', 404);
     }
 
     if (existingUser.organizationId !== req.user.organizationId) {
+        await prisma.auditLog.create({
+            data: {
+                action: AUDIT_ACTIONS.USER_UPDATED,
+                userId: req.user.id,
+                ipAddress: req.deviceInfo.ip || null,
+                userAgent: req.deviceInfo.userAgent || null,
+                deviceType: req.deviceInfo.deviceType || null,
+                country: req.deviceInfo.country.name || null,
+                city: req.deviceInfo.city || null,
+                riskLevel: RISK_LEVELS.MEDIUM,
+                timestamp: new Date(),
+                user: { connect: { id: req.user.id } },
+                details: {
+                    userId: existingUser.id,
+                    organizationId: existingUser.organizationId || null,
+                    email: existingUser.email,
+                    info: 'Attempted to update user from a different organization'
+                }
+            }
+        });
         return sendError(res, 'Access denied', 403);
     }
 
     const updatedUser = await userService.updateUser(id, req.validatedData);
 
+    await prisma.auditLog.create({
+        data: {
+            action: AUDIT_ACTIONS.USER_UPDATED,
+            userId: req.user.id,
+            ipAddress: req.deviceInfo.ip || null,
+            userAgent: req.deviceInfo.userAgent || null,
+            deviceType: req.deviceInfo.deviceType || null,
+            country: req.deviceInfo.country.name || null,
+            city: req.deviceInfo.city || null,
+            riskLevel: RISK_LEVELS.LOW,
+            timestamp: new Date(),
+            user: { connect: { id: req.user.id } },
+            details: {
+                userId: updatedUser.id,
+                organizationId: updatedUser.organizationId || null,
+                email: updatedUser.email,
+                info: 'User profile updated'
+            }
+        }
+    });
+
     sendSuccess(res, { user: updatedUser }, 'User updated successfully');
+
+
 });
 
 /**
@@ -72,19 +136,100 @@ const deactivateUser = asyncHandler(async (req, res) => {
     const existingUser = await userService.findUserById(id);
 
     if (!existingUser) {
+        await prisma.auditLog.create({
+            data: {
+                action: AUDIT_ACTIONS.USER_DEACTIVATED,
+                userId: req.user.id,
+                ipAddress: req.deviceInfo.ip || null,
+                userAgent: req.deviceInfo.userAgent || null,
+                deviceType: req.deviceInfo.deviceType || null,
+                country: req.deviceInfo.country.name || null,
+                city: req.deviceInfo.city || null,
+                riskLevel: RISK_LEVELS.MEDIUM,
+                timestamp: new Date(),
+                user: { connect: { id: req.user.id } },
+                details: {
+                    userId: id,
+                    organizationId: null,
+                    email: null,
+                    info: 'Attempted to deactivate non-existent user'
+                }
+            }
+        });
         return sendError(res, 'User not found', 404);
     }
 
     if (existingUser.organizationId !== req.user.organizationId) {
+        await prisma.auditLog.create({
+            data: {
+                action: AUDIT_ACTIONS.USER_DEACTIVATED,
+                userId: req.user.id,
+                ipAddress: req.deviceInfo.ip || null,
+                userAgent: req.deviceInfo.userAgent || null,
+                deviceType: req.deviceInfo.deviceType || null,
+                country: req.deviceInfo.country.name || null,
+                city: req.deviceInfo.city || null,
+                riskLevel: RISK_LEVELS.MEDIUM,
+                timestamp: new Date(),
+                user: { connect: { id: req.user.id } },
+                details: {
+                    userId: existingUser.id,
+                    organizationId: existingUser.organizationId || null,
+                    email: existingUser.email,
+                    info: 'Attempted to deactivate user from a different organization'
+                }
+            }
+        });
         return sendError(res, 'Access denied', 403);
     }
 
     // Prevent self-deactivation
     if (id === req.user.id) {
+        await prisma.auditLog.create({
+            data: {
+                action: AUDIT_ACTIONS.USER_DEACTIVATED,
+                userId: req.user.id,
+                ipAddress: req.deviceInfo.ip || null,
+                userAgent: req.deviceInfo.userAgent || null,
+                deviceType: req.deviceInfo.deviceType || null,
+                country: req.deviceInfo.country.name || null,
+                city: req.deviceInfo.city || null,
+                riskLevel: RISK_LEVELS.MEDIUM,
+                timestamp: new Date(),
+                user: { connect: { id: req.user.id } },
+                details: {
+                    userId: req.user.id,
+                    organizationId: req.user.organizationId || null,
+                    email: req.user.email,
+                    info: 'Attempted to deactivate own account'
+                }
+            }
+        });
         return sendError(res, 'Cannot deactivate your own account', 400);
     }
 
     const user = await userService.deactivateUser(id);
+
+    await prisma.auditLog.create({
+        data: {
+            action: AUDIT_ACTIONS.USER_DEACTIVATED,
+            userId: req.user.id,
+            ipAddress: req.deviceInfo.ip || null,
+            userAgent: req.deviceInfo.userAgent || null,
+            deviceType: req.deviceInfo.deviceType || null,
+            country: req.deviceInfo.country.name || null,
+            city: req.deviceInfo.city || null,
+            riskLevel: RISK_LEVELS.MEDIUM,
+            timestamp: new Date(),
+            user: { connect: { id: req.user.id } },
+            details: {
+                userId: user.id,
+                organizationId: user.organizationId || null,
+                email: user.email,
+                info: 'User deactivated'
+            }
+        }
+    });
 
     sendSuccess(res, { user }, 'User deactivated successfully');
 });
@@ -99,14 +244,75 @@ const reactivateUser = asyncHandler(async (req, res) => {
     const existingUser = await userService.findUserById(id);
 
     if (!existingUser) {
+        await prisma.auditLog.create({
+            data: {
+                action: AUDIT_ACTIONS.UNAUTHORIZED_ACCESS,
+                userId: req.user.id,
+                ipAddress: req.deviceInfo.ip || null,
+                userAgent: req.deviceInfo.userAgent || null,
+                deviceType: req.deviceInfo.deviceType || null,
+                country: req.deviceInfo.country.name || null,
+                city: req.deviceInfo.city || null,
+                riskLevel: RISK_LEVELS.MEDIUM,
+                timestamp: new Date(),
+                user: { connect: { id: req.user.id } },
+                details: {
+                    userId: id,
+                    organizationId: null,
+                    email: null,
+                    info: 'Attempted to reactivate non-existent user'
+                }
+            }
+        });
         return sendError(res, 'User not found', 404);
     }
 
     if (existingUser.organizationId !== req.user.organizationId) {
+        await prisma.auditLog.create({
+            data: {
+                action: AUDIT_ACTIONS.UNAUTHORIZED_ACCESS,
+                userId: req.user.id,
+                ipAddress: req.deviceInfo.ip || null,
+                userAgent: req.deviceInfo.userAgent || null,
+                deviceType: req.deviceInfo.deviceType || null,
+                country: req.deviceInfo.country.name || null,
+                city: req.deviceInfo.city || null,
+                riskLevel: RISK_LEVELS.MEDIUM,
+                timestamp: new Date(),
+                user: { connect: { id: req.user.id } },
+                details: {
+                    userId: existingUser.id,
+                    organizationId: existingUser.organizationId || null,
+                    email: existingUser.email,
+                    info: 'Attempted to reactivate user from a different organization'
+                }
+            }
+        });
         return sendError(res, 'Access denied', 403);
     }
 
     const user = await userService.reactivateUser(id);
+
+    await prisma.auditLog.create({
+        data: {
+            action: AUDIT_ACTIONS.USER_REACTIVATED,
+            userId: req.user.id,
+            ipAddress: req.deviceInfo.ip || null,
+            userAgent: req.deviceInfo.userAgent || null,
+            deviceType: req.deviceInfo.deviceType || null,
+            country: req.deviceInfo.country.name || null,
+            city: req.deviceInfo.city || null,
+            riskLevel: RISK_LEVELS.MEDIUM,
+            timestamp: new Date(),
+            user: { connect: { id: req.user.id } },
+            details: {
+                userId: user.id,
+                organizationId: user.organizationId || null,
+                email: user.email,
+                info: 'User reactivated'
+            }
+        }
+    });
 
     sendSuccess(res, { user }, 'User reactivated successfully');
 });
@@ -121,19 +327,100 @@ const deleteUser = asyncHandler(async (req, res) => {
     const existingUser = await userService.findUserById(id);
 
     if (!existingUser) {
+        await prisma.auditLog.create({
+            data: {
+                action: AUDIT_ACTIONS.UNAUTHORIZED_ACCESS,
+                userId: req.user.id,
+                ipAddress: req.deviceInfo.ip || null,
+                userAgent: req.deviceInfo.userAgent || null,
+                deviceType: req.deviceInfo.deviceType || null,
+                country: req.deviceInfo.country.name || null,
+                city: req.deviceInfo.city || null,
+                riskLevel: RISK_LEVELS.MEDIUM,
+                timestamp: new Date(),
+                user: { connect: { id: req.user.id } },
+                details: {
+                    userId: id,
+                    organizationId: null,
+                    email: null,
+                    info: 'Attempted to delete non-existent user'
+                }
+            }
+        });
         return sendError(res, 'User not found', 404);
     }
 
     if (existingUser.organizationId !== req.user.organizationId) {
+        await prisma.auditLog.create({
+            data: {
+                action: AUDIT_ACTIONS.UNAUTHORIZED_ACCESS,
+                userId: req.user.id,
+                ipAddress: req.deviceInfo.ip || null,
+                userAgent: req.deviceInfo.userAgent || null,
+                deviceType: req.deviceInfo.deviceType || null,
+                country: req.deviceInfo.country.name || null,
+                city: req.deviceInfo.city || null,
+                riskLevel: RISK_LEVELS.MEDIUM,
+                timestamp: new Date(),
+                user: { connect: { id: req.user.id } },
+                details: {
+                    userId: existingUser.id,
+                    organizationId: existingUser.organizationId || null,
+                    email: existingUser.email,
+                    info: 'Attempted to delete user from a different organization'
+                }
+            }
+        });
         return sendError(res, 'Access denied', 403);
     }
 
     // Prevent self-deletion
     if (id === req.user.id) {
+        await prisma.auditLog.create({
+            data: {
+                action: AUDIT_ACTIONS.UNAUTHORIZED_ACCESS,
+                userId: req.user.id,
+                ipAddress: req.deviceInfo.ip || null,
+                userAgent: req.deviceInfo.userAgent || null,
+                deviceType: req.deviceInfo.deviceType || null,
+                country: req.deviceInfo.country.name || null,
+                city: req.deviceInfo.city || null,
+                riskLevel: RISK_LEVELS.MEDIUM,
+                timestamp: new Date(),
+                user: { connect: { id: req.user.id } },
+                details: {
+                    userId: req.user.id,
+                    organizationId: req.user.organizationId || null,
+                    email: req.user.email,
+                    info: 'Attempted to delete own account'
+                }
+            }
+        });
         return sendError(res, 'Cannot delete your own account', 400);
     }
 
     await userService.deleteUser(id);
+
+    await prisma.auditLog.create({
+        data: {
+            action: AUDIT_ACTIONS.USER_DELETED,
+            userId: req.user.id,
+            ipAddress: req.deviceInfo.ip || null,
+            userAgent: req.deviceInfo.userAgent || null,
+            deviceType: req.deviceInfo.deviceType || null,
+            country: req.deviceInfo.country.name || null,
+            city: req.deviceInfo.city || null,
+            riskLevel: RISK_LEVELS.MEDIUM,
+            timestamp: new Date(),
+            user: { connect: { id: req.user.id } },
+            details: {
+                userId: existingUser.id,
+                organizationId: existingUser.organizationId || null,
+                email: existingUser.email,
+                info: 'User deleted'
+            }
+        }
+    });
 
     sendSuccess(res, null, 'User deleted successfully');
 });
@@ -171,14 +458,75 @@ const assignRole = asyncHandler(async (req, res) => {
     const existingUser = await userService.findUserById(id);
 
     if (!existingUser) {
+        await prisma.auditLog.create({
+            data: {
+                action: AUDIT_ACTIONS.UNAUTHORIZED_ACCESS,
+                userId: req.user.id,
+                ipAddress: req.deviceInfo.ip || null,
+                userAgent: req.deviceInfo.userAgent || null,
+                deviceType: req.deviceInfo.deviceType || null,
+                country: req.deviceInfo.country.name || null,
+                city: req.deviceInfo.city || null,
+                riskLevel: RISK_LEVELS.MEDIUM,
+                timestamp: new Date(),
+                user: { connect: { id: req.user.id } },
+                details: {
+                    userId: id,
+                    organizationId: null,
+                    email: null,
+                    info: 'Attempted to assign role to non-existent user'
+                }
+            }
+        });
         return sendError(res, 'User not found', 404);
     }
 
     if (existingUser.organizationId !== req.user.organizationId) {
+        await prisma.auditLog.create({
+            data: {
+                action: AUDIT_ACTIONS.UNAUTHORIZED_ACCESS,
+                userId: req.user.id,
+                ipAddress: req.deviceInfo.ip || null,
+                userAgent: req.deviceInfo.userAgent || null,
+                deviceType: req.deviceInfo.deviceType || null,
+                country: req.deviceInfo.country.name || null,
+                city: req.deviceInfo.city || null,
+                riskLevel: RISK_LEVELS.MEDIUM,
+                timestamp: new Date(),
+                user: { connect: { id: req.user.id } },
+                details: {
+                    userId: existingUser.id,
+                    organizationId: existingUser.organizationId || null,
+                    email: existingUser.email,
+                    info: 'Attempted to assign role to user from a different organization'
+                }
+            }
+        });
         return sendError(res, 'Access denied', 403);
     }
 
     const userRole = await roleService.assignRoleToUser(id, roleId, req.user.organizationId);
+
+    await prisma.auditLog.create({
+        data: {
+            action: AUDIT_ACTIONS.ROLE_ASSIGNED,
+            userId: req.user.id,
+            ipAddress: req.deviceInfo.ip || null,
+            userAgent: req.deviceInfo.userAgent || null,
+            deviceType: req.deviceInfo.deviceType || null,
+            country: req.deviceInfo.country.name || null,
+            city: req.deviceInfo.city || null,
+            riskLevel: RISK_LEVELS.LOW,
+            timestamp: new Date(),
+            user: { connect: { id: req.user.id } },
+            details: {
+                userId: existingUser.id,
+                organizationId: existingUser.organizationId || null,
+                email: existingUser.email,
+                info: `Role ID ${roleId} assigned to user`
+            }
+        }
+    });
 
     sendSuccess(res, { userRole }, 'Role assigned successfully');
 });
@@ -193,14 +541,75 @@ const removeRole = asyncHandler(async (req, res) => {
     const existingUser = await userService.findUserById(id);
 
     if (!existingUser) {
+        await prisma.auditLog.create({
+            data: {
+                action: AUDIT_ACTIONS.UNAUTHORIZED_ACCESS,
+                userId: req.user.id,
+                ipAddress: req.deviceInfo.ip || null,
+                userAgent: req.deviceInfo.userAgent || null,
+                deviceType: req.deviceInfo.deviceType || null,
+                country: req.deviceInfo.country.name || null,
+                city: req.deviceInfo.city || null,
+                riskLevel: RISK_LEVELS.MEDIUM,
+                timestamp: new Date(),
+                user: { connect: { id: req.user.id } },
+                details: {
+                    userId: id,
+                    organizationId: null,
+                    email: null,
+                    info: 'Attempted to remove role from non-existent user'
+                }
+            }
+        });
         return sendError(res, 'User not found', 404);
     }
 
     if (existingUser.organizationId !== req.user.organizationId) {
+        await prisma.auditLog.create({
+            data: {
+                action: AUDIT_ACTIONS.UNAUTHORIZED_ACCESS,
+                userId: req.user.id,
+                ipAddress: req.deviceInfo.ip || null,
+                userAgent: req.deviceInfo.userAgent || null,
+                deviceType: req.deviceInfo.deviceType || null,
+                country: req.deviceInfo.country.name || null,
+                city: req.deviceInfo.city || null,
+                riskLevel: RISK_LEVELS.MEDIUM,
+                timestamp: new Date(),
+                user: { connect: { id: req.user.id } },
+                details: {
+                    userId: existingUser.id,
+                    organizationId: existingUser.organizationId || null,
+                    email: existingUser.email,
+                    info: 'Attempted to remove role from user from a different organization'
+                }
+            }
+        });
         return sendError(res, 'Access denied', 403);
     }
 
     await roleService.removeRoleFromUser(id, roleId, req.user.organizationId);
+
+    await prisma.auditLog.create({
+        data: {
+            action: AUDIT_ACTIONS.ROLE_REMOVED,
+            userId: req.user.id,
+            ipAddress: req.deviceInfo.ip || null,
+            userAgent: req.deviceInfo.userAgent || null,
+            deviceType: req.deviceInfo.deviceType || null,
+            country: req.deviceInfo.country.name || null,
+            city: req.deviceInfo.city || null,
+            riskLevel: RISK_LEVELS.LOW,
+            timestamp: new Date(),
+            user: { connect: { id: req.user.id } },
+            details: {
+                userId: existingUser.id,
+                organizationId: existingUser.organizationId || null,
+                email: existingUser.email,
+                info: `Role ID ${roleId} removed from user`
+            }
+        }
+    });
 
     sendSuccess(res, null, 'Role removed successfully');
 });
@@ -223,6 +632,27 @@ const searchUsers = asyncHandler(async (req, res) => {
         sortBy: 'firstName',
         sortOrder: 'asc'
     });
+    await prisma.auditLog.create({
+        data: {
+            action: AUDIT_ACTIONS.USER_SEARCHED,
+            userId: req.user.id,
+            ipAddress: req.deviceInfo.ip || null,
+            userAgent: req.deviceInfo.userAgent || null,
+            deviceType: req.deviceInfo.deviceType || null,
+            country: req.deviceInfo.country.name || null,
+            city: req.deviceInfo.city || null,
+            riskLevel: RISK_LEVELS.LOW,
+            timestamp: new Date(),
+            user: { connect: { id: req.user.id } },
+            details: {
+                userId: req.user.id,
+                organizationId: req.user.organizationId || null,
+                email: req.user.email,
+                info: `Searched users with query: ${search.trim()}`
+            }
+
+        }
+    });
 
     sendPaginated(res, result.users, result.pagination, 'Search results retrieved successfully');
 });
@@ -231,8 +661,6 @@ const searchUsers = asyncHandler(async (req, res) => {
  * Get user statistics for organization
  */
 const getUserStats = asyncHandler(async (req, res) => {
-    const { prisma } = require('../utils/database');
-
     const [
         totalUsers,
         activeUsers,

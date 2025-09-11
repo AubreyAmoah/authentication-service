@@ -217,6 +217,233 @@ const createSuperAdmin = asyncHandler(async (req, res) => {
 });
 
 /**
+ * Deactivate or reactivate a user (super admin only)
+ */
+const toggleUserActivation = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { isActive } = req.body;
+    const userId = req.user.userId;
+    const deviceInfo = req.deviceInfo || {};
+
+    if (typeof isActive !== 'boolean') {
+        return sendError(res, 'isActive must be a boolean', 400);
+    }
+
+    const user = await prisma.user.findUnique({
+        where: { id },
+        select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            isSuperAdmin: true,
+            isActive: true
+        }
+    });
+
+    if (!user) {
+        await prisma.auditLog.create({
+            data: {
+                action: AUDIT_ACTIONS.USER_DEACTIVATED,
+                userId,
+                ipAddress: deviceInfo.ip || null,
+                userAgent: deviceInfo.userAgent || null,
+                deviceType: deviceInfo.deviceType || null,
+                country: deviceInfo.country.name || null,
+                city: deviceInfo.city || null,
+                riskLevel: RISK_LEVELS.CRITICAL,
+                timestamp: new Date(),
+                success: false,
+                details: {
+                    userId,
+                    organizationId: req.user.organizationId || null,
+                    email: req.user.email || null,
+                    info: 'User tried deactivating a user but user not found'
+                }
+            }
+        });
+        return sendError(res, 'User not found', 404);
+    }
+
+    // Prevent deactivating yourself
+    if (req.user.id === id) {
+        await prisma.auditLog.create({
+            data: {
+                action: AUDIT_ACTIONS.USER_DEACTIVATED,
+                userId,
+                ipAddress: deviceInfo.ip || null,
+                userAgent: deviceInfo.userAgent || null,
+                deviceType: deviceInfo.deviceType || null,
+                country: deviceInfo.country.name || null,
+                city: deviceInfo.city || null,
+                riskLevel: RISK_LEVELS.CRITICAL,
+                timestamp: new Date(),
+                success: false,
+                details: {
+                    userId,
+                    organizationId: req.user.organizationId || null,
+                    email: req.user.email || null,
+                    info: 'User tried deactivating their own account'
+                }
+            }
+        });
+        return sendError(res, 'Cannot deactivate your own account', 400);
+    }
+
+    // Prevent deactivating other super admins
+    if (user.isSuperAdmin) {
+        await prisma.auditLog.create({
+            data: {
+                action: AUDIT_ACTIONS.USER_DEACTIVATED,
+                userId,
+                ipAddress: deviceInfo.ip || null,
+                userAgent: deviceInfo.userAgent || null,
+                deviceType: deviceInfo.deviceType || null,
+                country: deviceInfo.country.name || null,
+                city: deviceInfo.city || null,
+                riskLevel: RISK_LEVELS.CRITICAL,
+                timestamp: new Date(),
+                success: false,
+                details: {
+                    userId,
+                    organizationId: req.user.organizationId || null,
+                    email: req.user.email || null,
+                    info: 'User tried deactivating another super admin'
+                }
+            }
+        });
+        return sendError(res, 'Cannot deactivate another super admin', 400);
+    }
+
+    if (user.isActive === isActive) {
+        return sendError(res, `User is already ${isActive ? 'active' : 'inactive'}`, 400);
+    }
+
+    const updatedUser = await prisma.user.update({
+        where: { id },
+        data: { isActive },
+        select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            isSuperAdmin: true,
+            isActive: true
+        }
+    });
+
+    sendSuccess(res, { user: updatedUser }, `User has been ${isActive ? 'reactivated' : 'deactivated'} successfully`);
+
+    await prisma.auditLog.create({
+        data: {
+            action: isActive ? AUDIT_ACTIONS.USER_ACTIVATED : AUDIT_ACTIONS.USER_DEACTIVATED,
+            userId,
+            ipAddress: deviceInfo.ip || null,
+            userAgent: deviceInfo.userAgent || null,
+            deviceType: deviceInfo.deviceType || null,
+            country: deviceInfo.country.name || null,
+            city: deviceInfo.city || null,
+            riskLevel: RISK_LEVELS.CRITICAL,
+            timestamp: new Date(),
+            success: true,
+            details: {
+                userId,
+                organizationId: req.user.organizationId || null,
+                email: req.user.email || null,
+                info: `User ${isActive ? 'reactivated' : 'deactivated'}: ${user.email}`
+            }
+        }
+    });
+});
+
+/**
+ * Deactive or reactivate an organization (super admin only)
+ */
+
+const toggleOrganizationActivation = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { isActive } = req.body;
+    const userId = req.user.userId;
+    const deviceInfo = req.deviceInfo || {};
+
+    if (typeof isActive !== 'boolean') {
+        return sendError(res, 'isActive must be a boolean', 400);
+    }
+
+    const organization = await prisma.organization.findUnique({
+        where: { id },
+        select: {
+            id: true,
+            name: true,
+            slug: true,
+            isActive: true
+        }
+    });
+
+    if (!organization) {
+        await prisma.auditLog.create({
+            data: {
+                action: AUDIT_ACTIONS.ORGANIZATION_DEACTIVATED,
+                userId,
+                ipAddress: deviceInfo.ip || null,
+                userAgent: deviceInfo.userAgent || null,
+                deviceType: deviceInfo.deviceType || null,
+                country: deviceInfo.country.name || null,
+                city: deviceInfo.city || null,
+                riskLevel: RISK_LEVELS.CRITICAL,
+                timestamp: new Date(),
+                success: false,
+                details: {
+                    userId,
+                    organizationId: req.user.organizationId || null,
+                    email: req.user.email || null,
+                    info: 'User tried deactivating an organization but organization not found'
+                }
+            }
+        });
+        return sendError(res, 'Organization not found', 404);
+    }
+
+    if (organization.isActive === isActive) {
+        return sendError(res, `Organization is already ${isActive ? 'active' : 'inactive'}`, 400);
+    }
+
+    const updatedOrganization = await prisma.organization.update({
+        where: { id },
+        data: { isActive },
+        select: {
+            id: true,
+            name: true,
+            slug: true,
+            isActive: true
+        }
+    });
+
+    sendSuccess(res, { organization: updatedOrganization }, `Organization has been ${isActive ? 're-activated' : 'deactivated'} successfully`);
+    await prisma.auditLog.create({
+        data: {
+            action: isActive ? AUDIT_ACTIONS.ORGANIZATION_ACTIVATED : AUDIT_ACTIONS.ORGANIZATION_DEACTIVATED,
+            userId,
+            ipAddress: deviceInfo.ip || null,
+            userAgent: deviceInfo.userAgent || null,
+            deviceType: deviceInfo.deviceType || null,
+            country: deviceInfo.country.name || null,
+            city: deviceInfo.city || null,
+            riskLevel: RISK_LEVELS.CRITICAL,
+            timestamp: new Date(),
+            success: true,
+            details: {
+                userId,
+                organizationId: req.user.organizationId || null,
+                email: req.user.email || null,
+                info: `Organization ${isActive ? 're-activated' : 'deactivated'}: ${organization.name}`
+            }
+        }
+    });
+});
+
+
+/**
  * Toggle super admin status for a user
  */
 const toggleSuperAdmin = asyncHandler(async (req, res) => {
@@ -416,6 +643,127 @@ const deleteAnyUser = asyncHandler(async (req, res) => {
         }
     });
 });
+
+/**
+ * View user's profile (super admin can view any user's profile)
+ */
+const getUserProfile = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    const user = await prisma.user.findUnique({
+        where: { id },
+        select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            phone: true,
+            avatar: true,
+            isEmailVerified: true,
+            isActive: true,
+            isSuperAdmin: true,
+            lastLoginAt: true,
+            emailVerifiedAt: true,
+            passwordChangedAt: true,
+            createdAt: true,
+            updatedAt: true,
+            organizationId: true,
+            organization: {
+                select: {
+                    id: true,
+                    name: true,
+                    slug: true,
+                    isActive: true
+                }
+            },
+            roles: {
+                include: {
+                    role: {
+                        select: {
+                            id: true,
+                            name: true,
+                            slug: true,
+                            permissions: true
+                        }
+                    }
+                }
+            },
+            sessions: {
+                where: {
+                    isActive: true,
+                    expiresAt: { gt: new Date() }
+                },
+                select: {
+                    id: true,
+                    userAgent: true,
+                    ipAddress: true,
+                    createdAt: true,
+                    expiresAt: true
+                }
+            },
+            _count: {
+                select: {
+                    sessions: true,
+                    passwordResets: true,
+                    emailVerifications: true
+                }
+            }
+        }
+    });
+
+    if (!user) {
+        return sendError(res, 'User not found', 404);
+    }
+
+    // Transform roles for easier access
+    if (user.roles) {
+        user.roles = user.roles.map(userRole => userRole.role);
+    }
+
+    sendSuccess(res, { user }, 'User profile retrieved successfully');
+});
+
+/**
+ * View organization details (super admin can view any organization)
+ */
+const getOrganizationDetails = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    const organization = await prisma.organization.findUnique({
+        where: { id },
+        select: {
+            id: true,
+            name: true,
+            slug: true,
+            isActive: true,
+            createdAt: true,
+            updatedAt: true,
+            users: {
+                select: {
+                    id: true,
+                    email: true,
+                    firstName: true,
+                    lastName: true,
+                    isSuperAdmin: true,
+                    isActive: true,
+                    createdAt: true
+                }
+            },
+            _count: {
+                select: {
+                    users: true
+                }
+            }
+        }
+    });
+
+    if (!organization) {
+        return sendError(res, 'Organization not found', 404);
+    }
+
+    sendSuccess(res, { organization }, 'Organization details retrieved successfully');
+});
+
 
 /**
  * Get all sessions across all organizations
@@ -686,5 +1034,9 @@ module.exports = {
     deleteAnyUser,
     getAllSessions,
     revokeAnySession,
-    getUserDetails
+    getUserDetails,
+    toggleOrganizationActivation,
+    toggleUserActivation,
+    getUserProfile,
+    getOrganizationDetails
 };

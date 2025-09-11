@@ -15,6 +15,8 @@ router.get('/stats', superAdminController.getSystemStats);
 // User management across all organizations
 router.get('/users', superAdminController.getAllUsers);
 router.get('/users/:id', validateParams(paramSchemas.uuid), superAdminController.getUserDetails);
+router.get('/users/:id/profile', validateParams(paramSchemas.uuid), superAdminController.getUserProfile);
+router.patch('/users/:id/toggle-activation', validateParams(paramSchemas.uuid), superAdminController.toggleUserActivation);
 router.post('/create-super-admin', validateRequest(userSchemas.register), superAdminController.createSuperAdmin);
 router.patch('/users/:id/toggle-super-admin', validateParams(paramSchemas.uuid), superAdminController.toggleSuperAdmin);
 router.delete('/users/:id', validateParams(paramSchemas.uuid), superAdminController.deleteAnyUser);
@@ -26,7 +28,8 @@ router.delete('/sessions/:sessionId', validateParams(paramSchemas.uuid), superAd
 // Organization management (using existing organization controller methods)
 router.get('/organizations', organizationController.getAllOrganizations);
 router.post('/organizations', validateRequest(organizationSchemas.create), organizationController.createOrganization);
-router.get('/organizations/:id', validateParams(paramSchemas.uuid), organizationController.getOrganizationById);
+router.get('/organizations/:id', validateParams(paramSchemas.uuid), superAdminController.getOrganizationDetails);
+router.patch('/organizations/:id/toggle-activation', validateParams(paramSchemas.uuid), superAdminController.toggleOrganizationActivation);
 router.patch('/organizations/:id', validateParams(paramSchemas.uuid), validateRequest(organizationSchemas.update), organizationController.updateOrganizationById);
 router.patch('/organizations/:id/deactivate', validateParams(paramSchemas.uuid), organizationController.deactivateOrganization);
 router.patch('/organizations/:id/reactivate', validateParams(paramSchemas.uuid), organizationController.reactivateOrganization);
