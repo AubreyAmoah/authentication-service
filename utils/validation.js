@@ -19,6 +19,10 @@ const organizationSchemas = {
         website: Joi.string().uri().optional(),
         logoUrl: Joi.string().uri().optional(),
         settings: Joi.object().optional()
+    }),
+    transferMembership: Joi.object({
+        userId: Joi.string().uuid().required(),
+        newOrganizationId: Joi.string().uuid().required()
     })
 };
 

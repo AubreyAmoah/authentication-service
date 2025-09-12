@@ -27,8 +27,11 @@ router.delete('/sessions/:sessionId', validateParams(paramSchemas.uuid), superAd
 
 // Organization management (using existing organization controller methods)
 router.get('/organizations', organizationController.getAllOrganizations);
+router.get('/organizations/check-availability', organizationController.checkOrganizationAvailability);
 router.post('/organizations', validateRequest(organizationSchemas.create), organizationController.createOrganization);
+router.post('/organizations/transfer-membership', validateRequest(organizationSchemas.transferMembership), superAdminController.transferOrganizationMembership);
 router.get('/organizations/:id', validateParams(paramSchemas.uuid), superAdminController.getOrganizationDetails);
+router.patch('/organizations/update/:id', validateParams(paramSchemas.uuid), validateRequest(organizationSchemas.update), organizationController.updateOrganizationById);
 router.patch('/organizations/:id/toggle-activation', validateParams(paramSchemas.uuid), superAdminController.toggleOrganizationActivation);
 router.patch('/organizations/:id', validateParams(paramSchemas.uuid), validateRequest(organizationSchemas.update), organizationController.updateOrganizationById);
 router.patch('/organizations/:id/deactivate', validateParams(paramSchemas.uuid), organizationController.deactivateOrganization);

@@ -117,6 +117,22 @@ const login = asyncHandler(async (req, res) => {
         });
     }
 
+    await prisma.auditLog.create({
+        data: {
+            action: 'USER_LOGIN',
+            userId: req.user.userId,
+            ipAddress: req.deviceInfo.ip || null,
+            userAgent: req.deviceInfo.userAgent || null,
+            city: req.deviceInfo.city || null,
+            riskLevel: 'MEDIUM',
+            timestamp: new Date(),
+            success: true,
+            details: {
+                timestamp: new Date()
+            }
+        }
+    });
+
     sendAuthResponse(
         res,
         result.user,
@@ -160,6 +176,21 @@ const logout = asyncHandler(async (req, res) => {
 const logoutAll = asyncHandler(async (req, res) => {
     await authService.logoutAll(req.user.id);
 
+    await prisma.auditLog.create({
+        data: {
+            action: 'USER_LOGOUT_ALL',
+            userId: req.user.userId,
+            ipAddress: req.deviceInfo.ip || null,
+            userAgent: req.deviceInfo.userAgent || null,
+            city: req.deviceInfo.city || null,
+            riskLevel: 'LOW',
+            timestamp: new Date(),
+            success: true,
+            details: {
+                timestamp: new Date()
+            }
+        }
+    });
     sendSuccess(res, null, 'Logged out from all devices');
 });
 
@@ -178,6 +209,22 @@ const getProfile = asyncHandler(async (req, res) => {
 const updateProfile = asyncHandler(async (req, res) => {
     const updatedUser = await userService.updateUser(req.user.id, req.validatedData);
 
+    await prisma.auditLog.create({
+        data: {
+            action: 'USER_PROFILE_UPDATED',
+            userId: req.user.userId,
+            ipAddress: req.deviceInfo.ip || null,
+            userAgent: req.deviceInfo.userAgent || null,
+            city: req.deviceInfo.city || null,
+            riskLevel: 'LOW',
+            timestamp: new Date(),
+            success: true,
+            details: {
+                updatedFields: Object.keys(req.validatedData),
+                timestamp: new Date()
+            }
+        }
+    });
     sendSuccess(res, { user: updatedUser }, 'Profile updated successfully');
 });
 
@@ -188,6 +235,22 @@ const changePassword = asyncHandler(async (req, res) => {
     const { currentPassword, newPassword } = req.validatedData;
 
     await userService.changePassword(req.user.id, currentPassword, newPassword);
+
+    await prisma.auditLog.create({
+        data: {
+            action: 'USER_PASSWORD_CHANGED',
+            userId: req.user.userId,
+            ipAddress: req.deviceInfo.ip || null,
+            userAgent: req.deviceInfo.userAgent || null,
+            city: req.deviceInfo.city || null,
+            riskLevel: 'MEDIUM',
+            timestamp: new Date(),
+            success: true,
+            details: {
+                timestamp: new Date()
+            }
+        }
+    });
 
     sendSuccess(res, null, 'Password changed successfully');
 });

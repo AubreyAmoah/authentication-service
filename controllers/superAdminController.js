@@ -1026,6 +1026,48 @@ const getUserDetails = asyncHandler(async (req, res) => {
     sendSuccess(res, { user }, 'User details retrieved successfully');
 });
 
+const transferOrganizationMembership = asyncHandler(async (req, res) => {
+    const { userId, newOrganizationId } = req.body;
+
+    // Validate input
+    if (!userId || !newOrganizationId) {
+        return sendError(res, 'userId and newOrganizationId are required', 400);
+    }
+
+    // Check if user exists
+    const user = await prisma.user.findUnique({
+        where: { id: userId }
+    });
+
+    if (!user) {
+        return sendError(res, 'User not found', 404);
+    }
+
+    // Check if new organization exists and is active
+    const newOrg = await prisma.organization.findUnique({
+        where: { id: newOrganizationId }
+    });
+
+    if (!newOrg || !newOrg.isActive) {
+        return sendError(res, 'New organization not found or inactive', 404);
+    }
+
+    // Transfer user to new organization
+    const updatedUser = await prisma.user.update({
+        where: { id: userId },
+        data: { organizationId: newOrganizationId },
+        select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            organizationId: true
+        }
+    });
+
+    sendSuccess(res, { user: updatedUser }, 'User organization membership transferred successfully');
+});
+
 module.exports = {
     getSystemStats,
     getAllUsers,
@@ -1038,5 +1080,6 @@ module.exports = {
     toggleOrganizationActivation,
     toggleUserActivation,
     getUserProfile,
-    getOrganizationDetails
+    getOrganizationDetails,
+    transferOrganizationMembership
 };

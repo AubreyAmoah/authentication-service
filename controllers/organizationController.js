@@ -27,7 +27,7 @@ const updateCurrentOrganization = asyncHandler(async (req, res) => {
     await prisma.auditLog.create({
         data: {
             action: AUDIT_ACTIONS.ORGANIZATION_UPDATED,
-            userId: req.user.id,
+            userId: req.user.userId,
             ipAddress: req.deviceInfo.ip || null,
             userAgent: req.deviceInfo.userAgent || null,
             deviceType: req.deviceInfo.deviceType || null,
@@ -35,7 +35,6 @@ const updateCurrentOrganization = asyncHandler(async (req, res) => {
             city: req.deviceInfo.city || null,
             riskLevel: RISK_LEVELS.MEDIUM,
             timestamp: new Date(),
-            user: { connect: { id: req.user.id } },
             details: {
                 organizationId: req.user.organizationId,
                 changes: req.validatedData,
@@ -65,6 +64,26 @@ const updateOrganizationSettings = asyncHandler(async (req, res) => {
         req.user.organizationId,
         req.body
     );
+
+    await prisma.auditLog.create({
+        data: {
+            action: AUDIT_ACTIONS.ORGANIZATION_UPDATED,
+            userId: req.user.userId,
+            ipAddress: req.deviceInfo.ip || null,
+            userAgent: req.deviceInfo.userAgent || null,
+            deviceType: req.deviceInfo.deviceType || null,
+            country: req.deviceInfo.country.name || null,
+            city: req.deviceInfo.city || null,
+            riskLevel: RISK_LEVELS.MEDIUM,
+            timestamp: new Date(),
+            details: {
+                organizationId: req.user.organizationId,
+                changes: req.body,
+                timestamp: new Date(),
+                info: 'Organization settings updated'
+            }
+        }
+    });
 
     sendSuccess(res, { settings: updatedSettings }, 'Organization settings updated successfully');
 });
@@ -157,8 +176,8 @@ const updateOrganizationById = asyncHandler(async (req, res) => {
     if (!organization) {
         await prisma.auditLog.create({
             data: {
-                action: AUDIT_ACTIONS.UNAUTHORIZED_ACCESS,
-                userId: req.user.id,
+                action: AUDIT_ACTIONS.ORGANIZATION_UPDATED,
+                userId: req.user.userId,
                 ipAddress: req.deviceInfo.ip || null,
                 userAgent: req.deviceInfo.userAgent || null,
                 deviceType: req.deviceInfo.deviceType || null,
@@ -166,7 +185,7 @@ const updateOrganizationById = asyncHandler(async (req, res) => {
                 city: req.deviceInfo.city || null,
                 riskLevel: RISK_LEVELS.HIGH,
                 timestamp: new Date(),
-                user: { connect: { id: req.user.id } },
+                success: false,
                 details: {
                     attemptedOrganizationId: id,
                     timestamp: new Date(),
@@ -182,7 +201,7 @@ const updateOrganizationById = asyncHandler(async (req, res) => {
     await prisma.auditLog.create({
         data: {
             action: AUDIT_ACTIONS.ORGANIZATION_UPDATED,
-            userId: req.user.id,
+            userId: req.user.userId,
             ipAddress: req.deviceInfo.ip || null,
             userAgent: req.deviceInfo.userAgent || null,
             deviceType: req.deviceInfo.deviceType || null,
@@ -190,7 +209,6 @@ const updateOrganizationById = asyncHandler(async (req, res) => {
             city: req.deviceInfo.city || null,
             riskLevel: RISK_LEVELS.MEDIUM,
             timestamp: new Date(),
-            user: { connect: { id: req.user.id } },
             details: {
                 organizationId: id,
                 changes: req.validatedData,
@@ -208,13 +226,15 @@ const updateOrganizationById = asyncHandler(async (req, res) => {
 const deactivateOrganization = asyncHandler(async (req, res) => {
     const { id } = req.params;
 
+    console.log(req.user.userId)
+
     const organization = await organizationService.findOrganizationById(id);
 
     if (!organization) {
         await prisma.auditLog.create({
             data: {
-                action: AUDIT_ACTIONS.UNAUTHORIZED_ACCESS,
-                userId: req.user.id,
+                action: AUDIT_ACTIONS.ORGANIZATION_DEACTIVATED,
+                userId: req.user.userId,
                 ipAddress: req.deviceInfo.ip || null,
                 userAgent: req.deviceInfo.userAgent || null,
                 deviceType: req.deviceInfo.deviceType || null,
@@ -222,7 +242,7 @@ const deactivateOrganization = asyncHandler(async (req, res) => {
                 city: req.deviceInfo.city || null,
                 riskLevel: RISK_LEVELS.HIGH,
                 timestamp: new Date(),
-                user: { connect: { id: req.user.id } },
+                success: false,
                 details: {
                     attemptedOrganizationId: id,
                     timestamp: new Date(),
@@ -236,8 +256,8 @@ const deactivateOrganization = asyncHandler(async (req, res) => {
     if (!organization.isActive) {
         await prisma.auditLog.create({
             data: {
-                action: AUDIT_ACTIONS.UNAUTHORIZED_ACCESS,
-                userId: req.user.id,
+                action: AUDIT_ACTIONS.ORGANIZATION_DEACTIVATED,
+                userId: req.user.userId,
                 ipAddress: req.deviceInfo.ip || null,
                 userAgent: req.deviceInfo.userAgent || null,
                 deviceType: req.deviceInfo.deviceType || null,
@@ -245,7 +265,7 @@ const deactivateOrganization = asyncHandler(async (req, res) => {
                 city: req.deviceInfo.city || null,
                 riskLevel: RISK_LEVELS.HIGH,
                 timestamp: new Date(),
-                user: { connect: { id: req.user.id } },
+                success: false,
                 details: {
                     organizationId: id,
                     timestamp: new Date(),
@@ -260,8 +280,8 @@ const deactivateOrganization = asyncHandler(async (req, res) => {
 
     await prisma.auditLog.create({
         data: {
-            action: AUDIT_ACTIONS.ORGANIZATION_DELETED,
-            userId: req.user.id,
+            action: AUDIT_ACTIONS.ORGANIZATION_DEACTIVATED,
+            userId: req.user.userId,
             ipAddress: req.deviceInfo.ip || null,
             userAgent: req.deviceInfo.userAgent || null,
             deviceType: req.deviceInfo.deviceType || null,
@@ -269,7 +289,6 @@ const deactivateOrganization = asyncHandler(async (req, res) => {
             city: req.deviceInfo.city || null,
             riskLevel: RISK_LEVELS.MEDIUM,
             timestamp: new Date(),
-            user: { connect: { id: req.user.id } },
             details: {
                 organizationId: id,
                 timestamp: new Date(),
@@ -292,8 +311,8 @@ const reactivateOrganization = asyncHandler(async (req, res) => {
     if (!organization) {
         await prisma.auditLog.create({
             data: {
-                action: AUDIT_ACTIONS.UNAUTHORIZED_ACCESS,
-                userId: req.user.id,
+                action: AUDIT_ACTIONS.ORGANIZATION_REACTIVATED,
+                userId: req.user.userId,
                 ipAddress: req.deviceInfo.ip || null,
                 userAgent: req.deviceInfo.userAgent || null,
                 deviceType: req.deviceInfo.deviceType || null,
@@ -301,7 +320,7 @@ const reactivateOrganization = asyncHandler(async (req, res) => {
                 city: req.deviceInfo.city || null,
                 riskLevel: RISK_LEVELS.HIGH,
                 timestamp: new Date(),
-                user: { connect: { id: req.user.id } },
+                success: false,
                 details: {
                     attemptedOrganizationId: id,
                     timestamp: new Date(),
@@ -315,8 +334,8 @@ const reactivateOrganization = asyncHandler(async (req, res) => {
     if (organization.isActive) {
         await prisma.auditLog.create({
             data: {
-                action: AUDIT_ACTIONS.UNAUTHORIZED_ACCESS,
-                userId: req.user.id,
+                action: AUDIT_ACTIONS.ORGANIZATION_REACTIVATED,
+                userId: req.user.userId,
                 ipAddress: req.deviceInfo.ip || null,
                 userAgent: req.deviceInfo.userAgent || null,
                 deviceType: req.deviceInfo.deviceType || null,
@@ -324,7 +343,7 @@ const reactivateOrganization = asyncHandler(async (req, res) => {
                 city: req.deviceInfo.city || null,
                 riskLevel: RISK_LEVELS.HIGH,
                 timestamp: new Date(),
-                user: { connect: { id: req.user.id } },
+                success: false,
                 details: {
                     organizationId: id,
                     timestamp: new Date(),
@@ -340,7 +359,7 @@ const reactivateOrganization = asyncHandler(async (req, res) => {
     await prisma.auditLog.create({
         data: {
             action: AUDIT_ACTIONS.ORGANIZATION_REACTIVATED,
-            userId: req.user.id,
+            userId: req.user.userId,
             ipAddress: req.deviceInfo.ip || null,
             userAgent: req.deviceInfo.userAgent || null,
             deviceType: req.deviceInfo.deviceType || null,
@@ -348,7 +367,6 @@ const reactivateOrganization = asyncHandler(async (req, res) => {
             city: req.deviceInfo.city || null,
             riskLevel: RISK_LEVELS.MEDIUM,
             timestamp: new Date(),
-            user: { connect: { id: req.user.id } },
             details: {
                 organizationId: id,
                 timestamp: new Date(),
@@ -371,7 +389,7 @@ const deleteOrganization = asyncHandler(async (req, res) => {
         await prisma.auditLog.create({
             data: {
                 action: AUDIT_ACTIONS.UNAUTHORIZED_ACCESS,
-                userId: req.user.id,
+                userId: req.user.userId,
                 ipAddress: req.deviceInfo.ip || null,
                 userAgent: req.deviceInfo.userAgent || null,
                 deviceType: req.deviceInfo.deviceType || null,
@@ -379,7 +397,6 @@ const deleteOrganization = asyncHandler(async (req, res) => {
                 city: req.deviceInfo.city || null,
                 riskLevel: RISK_LEVELS.HIGH,
                 timestamp: new Date(),
-                user: { connect: { id: req.user.id } },
                 details: {
                     attemptedOrganizationId: id,
                     timestamp: new Date(),
@@ -395,7 +412,7 @@ const deleteOrganization = asyncHandler(async (req, res) => {
     await prisma.auditLog.create({
         data: {
             action: AUDIT_ACTIONS.ORGANIZATION_DELETED,
-            userId: req.user.id,
+            userId: req.user.userId,
             ipAddress: req.deviceInfo.ip || null,
             userAgent: req.deviceInfo.userAgent || null,
             deviceType: req.deviceInfo.deviceType || null,
@@ -403,7 +420,6 @@ const deleteOrganization = asyncHandler(async (req, res) => {
             city: req.deviceInfo.city || null,
             riskLevel: RISK_LEVELS.CRITICAL,
             timestamp: new Date(),
-            user: { connect: { id: req.user.id } },
             details: {
                 organizationId: id,
                 timestamp: new Date(),
