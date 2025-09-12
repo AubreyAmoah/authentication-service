@@ -38,4 +38,9 @@ router.patch('/organizations/:id/deactivate', validateParams(paramSchemas.uuid),
 router.patch('/organizations/:id/reactivate', validateParams(paramSchemas.uuid), organizationController.reactivateOrganization);
 router.delete('/organizations/:id', validateParams(paramSchemas.uuid), organizationController.deleteOrganization);
 
+// Cors management
+router.post('/cors', superAdminController.createCorsUrl);
+router.get('/cors', superAdminController.getCorsUrls);
+router.delete('/cors/:id', superAdminController.deleteCorsUrl);
+
 module.exports = router;

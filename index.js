@@ -10,6 +10,7 @@ const passport = require('passport');
 const rateLimit = require('express-rate-limit');
 
 // Import configuration and utilities
+const { corsConfig, createCorsConfig } = require('./config/cors');
 const config = require('./config');
 const { connectDatabase } = require('./utils/database');
 const { initializeOAuth } = require('./plugins/oauth');
@@ -51,7 +52,9 @@ app.use(helmet({
 }));
 
 // CORS configuration
-app.use(cors(config.cors));
+// app.use(cors(config.cors));
+// const corsOptions = await createCorsConfig();
+app.use(cors(corsConfig));
 
 // Device info middleware
 app.use(deviceInfoMiddleware);

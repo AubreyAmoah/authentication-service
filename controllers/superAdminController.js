@@ -3,6 +3,10 @@ const organizationService = require('../services/organizationService');
 const { sendSuccess, sendError, sendPaginated, asyncHandler, getPaginationParams } = require('../utils/response');
 const { prisma } = require('../utils/database');
 const { AUDIT_ACTIONS, RISK_LEVELS } = require('../config/constants');
+const { addAllowedOrigin } = require('../config/cors');
+const { listAllowedOrigins } = require('../config/cors');
+const { removeAllowedOrigin } = require('../config/cors');
+const { get } = require('../routes/auth');
 
 /**
  * Get system-wide statistics
@@ -1068,6 +1072,50 @@ const transferOrganizationMembership = asyncHandler(async (req, res) => {
     sendSuccess(res, { user: updatedUser }, 'User organization membership transferred successfully');
 });
 
+const getCorsUrls = asyncHandler(async (req, res) => {
+    try {
+        const origins = await listAllowedOrigins();
+        sendSuccess(res, { origins }, 'CORS origins retrieved successfully');
+    }
+    catch (error) {
+        console.error('Error fetching CORS origins:', error);
+        sendError(res, 'Failed to fetch CORS origins', 500);
+    }
+});
+
+const deleteCorsUrl = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const deletedOrigin = await removeAllowedOrigin(id);
+        if (!deletedOrigin) {
+            return sendError(res, 'CORS origin not found', 404);
+        }
+        sendSuccess(res, null, 'CORS origin deleted successfully');
+    }
+    catch (error) {
+        console.error('Error deleting CORS origin:', error);
+        sendError(res, 'Failed to delete CORS origin', 500);
+    }
+});
+
+const createCorsUrl = asyncHandler(async (req, res) => {
+    const { url } = req.body;
+
+    if (!url) {
+        return sendError(res, 'CORS URL is required', 400);
+    }
+
+    try {
+        const newOrigin = await addAllowedOrigin(url);
+        sendSuccess(res, { origin: newOrigin }, 'CORS origin added successfully', 201);
+    }
+    catch (error) {
+        console.error('Error adding CORS origin:', error);
+        sendError(res, 'Failed to add CORS origin', 500);
+    }
+});
+
 module.exports = {
     getSystemStats,
     getAllUsers,
@@ -1081,5 +1129,8 @@ module.exports = {
     toggleUserActivation,
     getUserProfile,
     getOrganizationDetails,
-    transferOrganizationMembership
+    transferOrganizationMembership,
+    getCorsUrls,
+    deleteCorsUrl,
+    createCorsUrl
 };

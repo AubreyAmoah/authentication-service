@@ -1,0 +1,109 @@
+const { prisma } = require('../utils/database');
+
+// Cache for origins to avoid database hits on every request
+let originsCache = [];
+let lastCacheUpdate = 0;
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+async function getAllowedOrigins() {
+    const now = Date.now();
+
+    // Return cached origins if cache is still valid
+    if (originsCache.length > 0 && (now - lastCacheUpdate) < CACHE_TTL) {
+        return originsCache;
+    }
+
+    try {
+        const origins = await prisma.allowedOrigin.findMany({
+            where: { isActive: true },
+            select: { url: true }
+        });
+
+        originsCache = origins.map(origin => origin.url);
+        lastCacheUpdate = now;
+
+        // Add fallback origin if no origins in database
+        if (originsCache.length === 0) {
+            originsCache = [process.env.CORS_ORIGIN || 'http://localhost:3001'];
+        }
+
+        return originsCache;
+    } catch (error) {
+        console.error('Failed to fetch allowed origins from database:', error);
+        // Fallback to environment variable or default
+        return [process.env.CORS_ORIGIN || 'http://localhost:3001'];
+    }
+}
+
+// Dynamic CORS configuration
+const corsConfig = {
+    origin: async (origin, callback) => {
+        const allowedOrigins = await getAllowedOrigins();
+
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+
+        if (allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    credentials: true
+};
+
+// Alternative simpler approach - preload origins at startup
+async function createCorsConfig() {
+    const allowedOrigins = await getAllowedOrigins();
+
+    return {
+        origin: allowedOrigins,
+        credentials: true
+    };
+}
+
+// Utility functions for managing origins
+async function addAllowedOrigin(url) {
+    try {
+        const origin = await prisma.allowedOrigin.create({
+            data: { url }
+        });
+
+        // Clear cache to force refresh
+        originsCache = [];
+        lastCacheUpdate = 0;
+
+        return origin;
+    } catch (error) {
+        if (error.code === 'P2002') {
+            throw new Error('Origin already exists');
+        }
+        throw error;
+    }
+}
+
+async function removeAllowedOrigin(url) {
+    const result = await prisma.allowedOrigin.delete({
+        where: { url }
+    });
+
+    // Clear cache to force refresh
+    originsCache = [];
+    lastCacheUpdate = 0;
+
+    return result;
+}
+
+async function listAllowedOrigins() {
+    return await prisma.allowedOrigin.findMany({
+        orderBy: { createdAt: 'desc' }
+    });
+}
+
+module.exports = {
+    corsConfig,
+    createCorsConfig,
+    addAllowedOrigin,
+    removeAllowedOrigin,
+    listAllowedOrigins
+};
