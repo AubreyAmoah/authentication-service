@@ -1365,6 +1365,26 @@ const createCorsUrl = asyncHandler(async (req, res) => {
     try {
         const newOrigin = await addAllowedOrigin(url);
         sendSuccess(res, { origin: newOrigin }, 'CORS origin added successfully', 201);
+         await prisma.auditLog.create({
+        data: {
+            action: 'IP WHITLISTED',
+            userId: req.user.userId,
+            ipAddress: req.deviceInfo.ip || null,
+            userAgent: req.deviceInfo.userAgent || null,
+            deviceType: req.deviceInfo.deviceType || null,
+            country: req.deviceInfo.country.name || null,
+            city: req.deviceInfo.city || null,
+            riskLevel: RISK_LEVELS.CRITICAL,
+            timestamp: new Date(),
+            success: true,
+            details: {
+                userId: req.user.userId,
+                organizationId: req.user.organizationId || null,
+                email: req.user.email || null,
+                indo: `ip ${url} whitelisted`
+            }
+        }
+    });
     }
     catch (error) {
         console.error('Error adding CORS origin:', error);
