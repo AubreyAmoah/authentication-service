@@ -1,0 +1,3 @@
+ID,Action,User ID,IP Address,User Agent,Device Type,Country,City,Risk Level,Timestamp,Success,Details
+cmg9d5j6000026iv8n60ak3da,SUPER_ADMIN_LOGIN,740243dc-f138-4b6a-9f81-25447fb08a08,127.0.0.1,PostmanRuntime/7.48.0,desktop,Local Environment,Local,CRITICAL,2025-10-02T12:00:16.200Z,Yes,"{""email"":""superadmin@system.com"",""userId"":""740243dc-f138-4b6a-9f81-25447fb08a08"",""organizationId"":null}"
+cmg9culof0003132ojgjff7vf,USER_SESSION_REVOKED,740243dc-f138-4b6a-9f81-25447fb08a08,127.0.0.1,PostmanRuntime/7.48.0,desktop,Local Environment,Local,CRITICAL,2025-10-02T11:51:46.238Z,No,"{""info"":""User tried revoking session but session notfound"",""email"":""superadmin@system.com"",""userId"":""740243dc-f138-4b6a-9f81-25447fb08a08"",""organizationId"":null}"

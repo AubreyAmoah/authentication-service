@@ -133,6 +133,19 @@ const login = asyncHandler(async (req, res) => {
         }
     });
 
+    await prisma.loginAttempts.create({
+        data: {
+            userId: result.user.id,
+            createdAt: new Date(),
+            ipAddress: req.deviceInfo.ip || null,
+            userAgent: req.deviceInfo.userAgent || null,
+            country: req.deviceInfo.country || null,
+            city: req.deviceInfo.city || null,
+            deviceType: req.deviceInfo.deviceType || null,
+            browser: req.deviceInfo.browser || null,
+        }
+    });
+
     sendAuthResponse(
         res,
         result.user,

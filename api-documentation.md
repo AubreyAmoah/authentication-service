@@ -1163,4 +1163,66 @@ Use the provided endpoints for testing:
 
 ---
 
+
+# Audit Logs Export API Documentation
+
+## Overview
+The Audit Logs Export API allows administrators to export audit log data in multiple formats (CSV and Excel) for reporting, compliance, and analysis purposes.
+
+---
+
+## Endpoint
+
+### Export Audit Logs
+**GET** `/api/audit-logs/export`
+
+Exports all audit logs in the specified format.
+
+---
+
+## Query Parameters
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `format` | string | No | `csv` | Export format. Accepted values: `csv`, `excel` |
+
+---
+
+## Request Examples
+
+### Export as CSV (Default)
+```http
+
+
+# Login Attempts API Documentation
+
+## Overview
+The Login Attempts API provides comprehensive endpoints for tracking, monitoring, and analyzing user login activity. This system helps administrators maintain security by monitoring access patterns, detecting suspicious activities, and maintaining audit trails.
+
+---
+
+## Table of Contents
+- [Authentication](#authentication)
+- [Endpoints](#endpoints)
+  - [Get All Login Attempts](#get-all-login-attempts)
+  - [Get Filtered Login Attempts](#get-filtered-login-attempts)
+  - [Get User Login Attempts](#get-user-login-attempts)
+  - [Get Recent Login Attempts](#get-recent-login-attempts)
+  - [Get Login Attempts by IP](#get-login-attempts-by-ip)
+  - [Get Login Attempts Statistics](#get-login-attempts-statistics)
+  - [Export Login Attempts](#export-login-attempts)
+  - [Cleanup Old Login Attempts](#cleanup-old-login-attempts)
+- [Data Models](#data-models)
+- [Error Handling](#error-handling)
+- [Rate Limiting](#rate-limiting)
+- [Best Practices](#best-practices)
+
+---
+
+## Authentication
+
+All endpoints require authentication via JWT token in the Authorization header:
+```http
+
+upda
 This documentation covers all endpoints in your Express authentication microservice with comprehensive request/response examples, error handling, and usage guidelines.

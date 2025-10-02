@@ -23,10 +23,18 @@ router.delete('/users/:id', validateParams(paramSchemas.uuid), superAdminControl
 
 // Session management across all organizations
 router.get('/sessions', superAdminController.getAllSessions);
-router.delete('/sessions/:sessionId', validateParams(paramSchemas.uuid), superAdminController.revokeAnySession);
+router.get('/sessions/user/:userId', superAdminController.getUserSessions);
+router.get('/sessions/current', superAdminController.getCurrentSession);
+router.get('/sessions/active/count', superAdminController.getActiveSessionsCount);
+router.get('/sessions/stats', superAdminController.getSessionsStats);
+router.get('/sessions/export', superAdminController.exportSessions);
+router.delete('/sessions/:sessionId', superAdminController.revokeAnySession);
+router.delete('/sessions/user/:userId/revoke-all', superAdminController.revokeAllUserSessions);
+router.delete('/sessions/cleanup', superAdminController.cleanupExpiredSessions);
 
 // Organization management (using existing organization controller methods)
 router.get('/organizations', organizationController.getAllOrganizations);
+router.get('/organizations-users', superAdminController.getAllOrganizationUsers);
 router.get('/organizations/check-availability', organizationController.checkOrganizationAvailability);
 router.post('/organizations', validateRequest(organizationSchemas.create), organizationController.createOrganization);
 router.post('/organizations/transfer-membership', validateRequest(organizationSchemas.transferMembership), superAdminController.transferOrganizationMembership);
@@ -38,7 +46,29 @@ router.patch('/organizations/:id/deactivate', validateParams(paramSchemas.uuid),
 router.patch('/organizations/:id/reactivate', validateParams(paramSchemas.uuid), organizationController.reactivateOrganization);
 router.delete('/organizations/:id', validateParams(paramSchemas.uuid), organizationController.deleteOrganization);
 
-// Cors management
+// Audit logs
+router.get('/audit-logs', superAdminController.getAuditLogs);
+router.get('/audit-logs/all', superAdminController.getAllAuditLogs);
+router.get('/audit-logs/export', superAdminController.exportAuditLogs);
+
+// Login attempts management
+router.get('/login-attempts', superAdminController.getLoginAttempts);
+router.get('/login-attempts/all', superAdminController.getAllLoginAttempts);
+router.get('/login-attempts/user/:userId', superAdminController.getUserLoginAttempts);
+router.get('/login-attempts/recent', superAdminController.getRecentLoginAttempts);
+router.get('/login-attempts/ip/:ipAddress', superAdminController.getLoginAttemptsByIP);
+router.get('/login-attempts/stats', superAdminController.getLoginAttemptsStats);
+router.get('/login-attempts/export', superAdminController.exportLoginAttempts);
+router.delete('/login-attempts/cleanup', superAdminController.cleanupOldLoginAttempts);
+
+// Role management
+router.post('/roles', superAdminController.createRole);
+// Note: assignRoleToUser and revokeRoleFromUser are utility functions, not direct routes
+// You may want to create wrapper routes for these if needed:
+// router.post('/users/:userId/roles/:roleId', superAdminController.assignRole);
+// router.delete('/users/:userId/roles/:roleId', superAdminController.revokeRole);
+
+// CORS management
 router.post('/cors', superAdminController.createCorsUrl);
 router.get('/cors', superAdminController.getCorsUrls);
 router.delete('/cors/:id', superAdminController.deleteCorsUrl);
