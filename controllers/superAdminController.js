@@ -6,6 +6,7 @@ const { addAllowedOrigin } = require('../config/cors');
 const { listAllowedOrigins } = require('../config/cors');
 const { removeAllowedOrigin } = require('../config/cors');
 const { exportData } = require('../utils/exportUtils');
+const { get } = require('http');
 
 /**
  * Get system-wide statistics
@@ -595,6 +596,210 @@ const toggleSuperAdmin = asyncHandler(async (req, res) => {
                 organizationId: req.user.organizationId || null,
                 email: req.user.email || null,
                 indo: `Super admin status ${action} for user ${updatedUser.email}`
+            }
+        }
+    });
+});
+
+/** Deactivate a user (super admin only) */
+
+const deactivateUser = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const userId = req.user.userId;
+    const deviceInfo = req.deviceInfo || {};
+    const user = await prisma.user.findUnique({
+        where: { id },
+        select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            isSuperAdmin: true,
+            isActive: true
+        }
+    });
+    if (!user) {
+        await prisma.auditLog.create({
+            data: {
+                action: AUDIT_ACTIONS.USER_DEACTIVATED,
+                userId,
+
+                ipAddress: deviceInfo.ip || null,
+                userAgent: deviceInfo.userAgent || null,
+                deviceType: deviceInfo.deviceType || null,
+                country: deviceInfo.country.name || null,
+                city: deviceInfo.city || null,
+                riskLevel: RISK_LEVELS.CRITICAL,
+                timestamp: new Date(),
+                success: false,
+                details: {
+                    userId,
+                    organizationId: req.user.organizationId || null,
+                    email: req.user.email || null,
+                    info: 'User tried deactivating a user but user not found'
+                }
+            }
+        });
+        return sendError(res, 'User not found', 404);
+    }
+    // Prevent deactivating yourself
+    if (req.user.id === id) {
+        await prisma.auditLog.create({
+            data: {
+                action: AUDIT_ACTIONS.USER_DEACTIVATED,
+                userId,
+                ipAddress: deviceInfo.ip || null,
+                userAgent: deviceInfo.userAgent || null,
+                deviceType: deviceInfo.deviceType || null,
+                country: deviceInfo.country.name || null,
+                city: deviceInfo.city || null,
+                riskLevel: RISK_LEVELS.CRITICAL,
+                timestamp: new Date(),
+                success: false,
+                details: {
+                    userId,
+                    organizationId: req.user.organizationId || null,
+                    email: req.user.email || null,
+                    info: 'User tried deactivating their own account'
+                }
+            }
+        });
+        return sendError(res, 'Cannot deactivate your own account', 400);
+    }
+    // Prevent deactivating other super admins
+    if (user.isSuperAdmin) {
+        await prisma.auditLog.create({
+            data: {
+                action: AUDIT_ACTIONS.USER_DEACTIVATED,
+                userId,
+                ipAddress: deviceInfo.ip || null,
+                userAgent: deviceInfo.userAgent || null,
+                deviceType: deviceInfo.deviceType || null,
+                country: deviceInfo.country.name || null,
+                city: deviceInfo.city || null,
+                riskLevel: RISK_LEVELS.CRITICAL,
+                timestamp: new Date(),
+                success: false,
+                details: {
+                    userId,
+                    organizationId: req.user.organizationId || null,
+                    email: req.user.email || null,
+                    info: 'User tried deactivating another super admin'
+                }
+            }
+        });
+        return sendError(res, 'Cannot deactivate another super admin', 400);
+    }
+    if (!user.isActive) {
+        return sendError(res, 'User is already inactive', 400);
+    }
+    const updatedUser = await prisma.user.update({
+        where: { id },
+        data: { isActive: false },
+        select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            isSuperAdmin: true,
+            isActive: true
+        }
+    });
+    sendSuccess(res, { user: updatedUser }, 'User has been deactivated successfully');
+    await prisma.auditLog.create({
+        data: {
+            action: AUDIT_ACTIONS.USER_DEACTIVATED,
+            userId,
+            ipAddress: deviceInfo.ip || null,
+            userAgent: deviceInfo.userAgent || null,
+            deviceType: deviceInfo.deviceType || null,
+            country: deviceInfo.country.name || null,
+            city: deviceInfo.city || null,
+            riskLevel: RISK_LEVELS.CRITICAL,
+            timestamp: new Date(),
+            success: true,
+            details: {
+                userId,
+                organizationId: req.user.organizationId || null,
+                email: req.user.email || null,
+                info: `User deactivated: ${user.email}`
+            }
+        }
+    });
+});
+
+
+const activateUser = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const userId = req.user.userId;
+    const deviceInfo = req.deviceInfo || {};
+    const user = await prisma.user.findUnique({
+        where: { id },
+        select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            isSuperAdmin: true,
+            isActive: true
+        }
+    });
+    if (!user) {
+        await prisma.auditLog.create({
+            data: {
+                action: AUDIT_ACTIONS.USER_ACTIVATED,
+                userId,
+                ipAddress: deviceInfo.ip || null,
+                userAgent: deviceInfo.userAgent || null,
+                deviceType: deviceInfo.deviceType || null,
+                country: deviceInfo.country.name || null,
+                city: deviceInfo.city || null,
+                riskLevel: RISK_LEVELS.CRITICAL,
+                timestamp: new Date(),
+                success: false,
+                details: {
+                    userId,
+                    organizationId: req.user.organizationId || null,
+                    email: req.user.email || null,
+                    info: 'User tried activating a user but user not found'
+                }
+            }
+        });
+        return sendError(res, 'User not found', 404);
+    }
+    if (user.isActive) {
+        return sendError(res, 'User is already active', 400);
+    }
+    const updatedUser = await prisma.user.update({
+        where: { id },
+        data: { isActive: true },
+        select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            isSuperAdmin: true,
+            isActive: true
+        }
+    });
+    sendSuccess(res, { user: updatedUser }, 'User has been activated successfully');
+    await prisma.auditLog.create({
+        data: {
+            action: AUDIT_ACTIONS.USER_ACTIVATED,
+            userId,
+            ipAddress: deviceInfo.ip || null,
+            userAgent: deviceInfo.userAgent || null,
+            deviceType: deviceInfo.deviceType || null,
+            country: deviceInfo.country.name || null,
+            city: deviceInfo.city || null,
+            riskLevel: RISK_LEVELS.CRITICAL,
+            timestamp: new Date(),
+            success: true,
+            details: {
+                userId,
+                organizationId: req.user.organizationId || null,
+                email: req.user.email || null,
+                info: `User activated: ${user.email}`
             }
         }
     });
@@ -1667,7 +1872,7 @@ const exportLoginAttempts = asyncHandler(async (req, res) => {
             user: {
                 select: {
                     id: true,
-                    name: true,
+                    firstName: true,
                     email: true
                 }
             }
@@ -1683,7 +1888,7 @@ const exportLoginAttempts = asyncHandler(async (req, res) => {
     const formattedData = loginAttempts.map(attempt => ({
         'Attempt ID': attempt.id,
         'User ID': attempt.userId,
-        'User Name': attempt.user?.name || 'N/A',
+        'User Name': attempt.user?.firstName || 'N/A',
         'User Email': attempt.user?.email || 'N/A',
         'IP Address': attempt.ipAddress || 'N/A',
         'User Agent': attempt.userAgent || 'N/A',
@@ -2791,6 +2996,61 @@ const getTimeUntilExpiry = (expiresAt) => {
 };
 
 
+const getUsersByOrganization = asyncHandler(async (req, res) => {
+    const { organizationId } = req.params;
+    const { limit, page } = getPaginationParams(req.query);
+    
+    const skip = (page - 1) * limit;
+    
+    const [users, total] = await Promise.all([
+        prisma.user.findMany({
+            where: { organizationId },
+            select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                isActive: true,
+                roles: {
+                    select: {
+                        role: {
+                            select: {
+                                id: true,
+                                name: true,
+                                slug: true
+                            }
+                        }
+                    }
+                },
+                createdAt: true,
+                updatedAt: true
+            },
+            skip,
+            take: limit,
+            orderBy: { createdAt: 'desc' }
+        }),
+        prisma.user.count({ where: { organizationId } })
+    ]);
+
+    const formattedUsers = users.map(user => ({
+        id: user.id,
+        name: `${user.firstName} ${user.lastName}`,
+        email: user.email,
+        isActive: user.isActive,
+        roles: user.roles.map(r => r.role.name),
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt
+    }));
+
+    sendPaginated(res, formattedUsers, {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+    }, 'Users retrieved successfully');
+});
+
+
 module.exports = {
     createRole,
     assignRoleToUser,
@@ -2829,5 +3089,8 @@ module.exports = {
     getUserLoginAttempts,
     getRecentLoginAttempts,
     getLoginAttemptsByIP,
-    cleanupOldLoginAttempts
+    cleanupOldLoginAttempts,
+    deactivateUser,
+    activateUser,
+    getUsersByOrganization
 };

@@ -15,10 +15,13 @@ router.get('/stats', superAdminController.getSystemStats);
 // User management across all organizations
 router.get('/users', superAdminController.getAllUsers);
 router.get('/users/:id', validateParams(paramSchemas.uuid), superAdminController.getUserDetails);
+router.get('/users/organization/:orgId', superAdminController.getUsersByOrganization);
 router.get('/users/:id/profile', validateParams(paramSchemas.uuid), superAdminController.getUserProfile);
 router.patch('/users/:id/toggle-activation', validateParams(paramSchemas.uuid), superAdminController.toggleUserActivation);
 router.post('/create-super-admin', validateRequest(userSchemas.register), superAdminController.createSuperAdmin);
 router.patch('/users/:id/toggle-super-admin', validateParams(paramSchemas.uuid), superAdminController.toggleSuperAdmin);
+router.patch('/users/deactivate/:id', validateParams(paramSchemas.uuid), superAdminController.deactivateUser);
+router.patch('/users/reactivate/:id', validateParams(paramSchemas.uuid), superAdminController.activateUser);
 router.delete('/users/:id', validateParams(paramSchemas.uuid), superAdminController.deleteAnyUser);
 
 // Session management across all organizations
